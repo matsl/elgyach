@@ -1,4 +1,4 @@
-;;; gyach-version.el --- version from build system
+;;; gyach-events.el --- ElHyach event handling
 
 ;; Copyright (C) 2003  Free Software Foundation, Inc.
 
@@ -26,23 +26,19 @@
 
 ;;; Code:
 
-(require 'comint)
+(defcustom gyach-event-hook '()
+  "List of functions taking two arguments.
+`gyach-event-hook' is a set of functions taking two arguments:
+the event type and and event argument."
+  :group 'gyach-hooks
+  :type 'hook)
 
-(defconst gyach-version "BUILD_VERSION"
-  "ElGyach version from build system.")
+(defun gyach-process-events (event-type argument)
+  (catch 'abort
+    (dolist (h gyach-event-hook)
+      (when (null (funcall h event-type argument))
+	(throw 'abort nil)))))
 
-(defconst gyach-publicity-string
-  (concat "ElGyach " gyach-version 
-	  ", the GNU Emacs Lisp interface to Yahoo! Chat "
-	  "http://savannah.nongnu.org/projects/elgyach/")
-  "Client advertisement string.  There is no real reason to
-change this.")
+(provide 'gyach-events)
 
-(defun gyach-custom-VERSION (proc argument)
-  "Advertise to other users what client you're chatting with."
-  (comint-send-string proc (format ": is conversing with you via %s\n\n" 
-				   gyach-publicity-string)))
-
-(provide 'gyach-version)
-
-;;; gyach-version.el ends here
+;;; gyach-events.el ends here

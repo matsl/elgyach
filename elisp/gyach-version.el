@@ -28,7 +28,7 @@
 
 (require 'comint)
 
-(defconst gyach-version "BUILD_VERSION"
+(defvar gyach-version "0.2"
   "ElGyach version from build system.")
 
 (defconst gyach-publicity-string

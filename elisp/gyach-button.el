@@ -26,12 +26,34 @@
 
 ;;; Code:
 
-;; This is right out of ERC:
+(require 'gyach-room)
+
+;; This is right out of ERC (we all love ERC):
 
 (defcustom gyach-button-url-regexp "\\(www\\.\\|\\(s?https?\\|ftp\\|file\\|gopher\\|news\\|telnet\\|wais\\|mailto\\):\\)\\(//[-a-zA-Z0-9_.]+:[0-9]*\\)?[-a-zA-Z0-9_=!?#$@~`%&*+\\/:;.,]+[-a-zA-Z0-9_=#$@~`%&*+\\/]"
   "Regular expression that matches URLs."
-  :group 'gyach-button
+  :group 'gyach
   :type 'regexp)
+
+(defconst gyach-username-profile-url "http://profiles.yahoo.com/"
+  "URL to use for user profiles.")
+
+(defun gyach-username-button (username)
+  (when username
+    (browse-url (concat gyach-username-profile-url username))))
+
+(defun gyach-button-username-replace (start end)
+  (save-excursion
+    (narrow-to-region start end)
+    (dolist (user (gyach-room-list))
+      (goto-char (point-min))
+      (while (search-forward-regexp (concat "\\(" user "\\)") (point-max) nil)
+	(make-text-button (match-beginning 1) (match-end 1)
+			  :type 'help-xref
+			  'help-echo "mouse-2, RET: user profile"
+			  'help-function 'gyach-username-button
+			  'help-args (list (buffer-substring (match-beginning 1)
+							     (match-end 1))))))))
 
 (provide 'gyach-button)
 

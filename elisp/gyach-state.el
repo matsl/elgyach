@@ -26,8 +26,8 @@
 
 ;;; Code:
 
-(defvar gyach-ignorables '()
-  "List of fools to ignore")
+(require 'gyach-ignore)
+(require 'gyach-custom)
 
 (defun gyach-save () 
   "Save El-Gyach setting to file. Currently this includes
@@ -46,6 +46,14 @@
     (insert-file-contents (expand-file-name gyach-save-file))
     (goto-char (point-min))
     (setq gyach-ignorables (read (current-buffer)))))
+
+(defun gyach-custom-SAVE (proc argument)
+  (message "Saving ElGyach state.")
+  (gyach-save))
+
+(defun gyach-custom-LOAD (proc argument)
+  (message "Restoring ElGyach state.")
+  (gyach-load))
 
 (provide 'gyach-state)
 

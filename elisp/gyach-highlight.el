@@ -1,4 +1,4 @@
-;;; gyach-version.el --- version from build system
+;;; gyach-highlight.el --- ElGyach post highlighting facility
 
 ;; Copyright (C) 2003  Free Software Foundation, Inc.
 
@@ -26,23 +26,31 @@
 
 ;;; Code:
 
-(require 'comint)
+(defvar gyach-highlightables '())
 
-(defconst gyach-version "BUILD_VERSION"
-  "ElGyach version from build system.")
+(defun gyach-highlightables ()
+  gyach-highlightables)
 
-(defconst gyach-publicity-string
-  (concat "ElGyach " gyach-version 
-	  ", the GNU Emacs Lisp interface to Yahoo! Chat "
-	  "http://savannah.nongnu.org/projects/elgyach/")
-  "Client advertisement string.  There is no real reason to
-change this.")
+(defun gyach-custom-HIGHLIGHT (proc argument)
+  (gyach-highlight argument))
 
-(defun gyach-custom-VERSION (proc argument)
-  "Advertise to other users what client you're chatting with."
-  (comint-send-string proc (format ": is conversing with you via %s\n\n" 
-				   gyach-publicity-string)))
+(defun gyach-custom-UNHIGHLIGHT (proc argument)
+  (gyach-unhighlight argument))
 
-(provide 'gyach-version)
+(defun gyach-highlight (user)
+  (string-match (concat "\\(" gyach-username-regexp "\\)") user)
+  (add-to-list 'gyach-highlightables (match-string 1 user)))
 
-;;; gyach-version.el ends here
+(defun gyach-unhighlight (user)
+  (string-match (concat "\\(" gyach-username-regexp "\\)") user)
+  (setq gyach-highlightables (remove (match-string 1 user) gyach-highlightables)))
+
+(defun gyach-is-highlightable (username post)
+  (cond ((member-ignore-case username (gyach-highlightables))
+	 t)
+	(t 
+	 nil)))
+	
+(provide 'gyach-highlight)
+
+;;; gyach-highlight.el ends here

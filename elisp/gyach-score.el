@@ -1,4 +1,4 @@
-;;; gyach-version.el --- version from build system
+;;; gyach-score.el --- functions for scoring posts in ElGyach
 
 ;; Copyright (C) 2003  Free Software Foundation, Inc.
 
@@ -26,23 +26,8 @@
 
 ;;; Code:
 
-(require 'comint)
 
-(defconst gyach-version "BUILD_VERSION"
-  "ElGyach version from build system.")
 
-(defconst gyach-publicity-string
-  (concat "ElGyach " gyach-version 
-	  ", the GNU Emacs Lisp interface to Yahoo! Chat "
-	  "http://savannah.nongnu.org/projects/elgyach/")
-  "Client advertisement string.  There is no real reason to
-change this.")
+(provide 'gyach-score)
 
-(defun gyach-custom-VERSION (proc argument)
-  "Advertise to other users what client you're chatting with."
-  (comint-send-string proc (format ": is conversing with you via %s\n\n" 
-				   gyach-publicity-string)))
-
-(provide 'gyach-version)
-
-;;; gyach-version.el ends here
+;;; gyach-score.el ends here

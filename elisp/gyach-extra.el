@@ -26,10 +26,7 @@
 
 ;;; Code:
 
-(defun gyach-custom-FOOLS (proc argument)
-  "Announce to the room how many fools you were able to ignore."
-  (comint-send-string proc (format ": %d fools currently ignored (last fool was %s)\n\n" 
-				   (length gyach-ignorables) (car gyach-ignorables))))
+(require 'comint)
 
 (defun gyach-custom-YOW (proc argument)
   "Chatters need Zippy wisdom."
@@ -50,46 +47,9 @@
       (setq result (format "%s\n\n" (buffer-substring (mark) (point)))))
     (comint-send-string proc result)))
 
-(defun gyach-import-inferior (file)
-  "Import an ignore list (from gyach/curphoo/curfloo -- anything with an ignore per line)."
-  (interactive
-   (list (read-file-name (format "Ignore list to merge with %s: " gyach-save-file) nil nil t)))
-  (when (null file)
-    (error "You cannot specify nil for the filename!"))
-  (save-excursion
-    (with-temp-buffer
-      (insert-file file)
-      (goto-char (point-min))
-      (let ((count 0))
-	(while (not (equal (forward-line) 1))
-	  (let ((beg)
-		(end))
-	    (beginning-of-line)
-	    (setq beg (point))
-	    (end-of-line)
-	    (setq end (point))
-	    (let ((line (buffer-substring beg end)))
-	      (when (> (length line) 0)
-		(progn 
-		  (setq gyach-ignorables (cons line gyach-ignorables))
-		  (setq count (1+ count)))))))
-	(message "%d fools appended to your ignore list (%d total)" count (length gyach-ignorables))))))
-
-
-;; (defun gyach-output-username (start end)
-;;   (save-excursion
-;;     (goto-char start)
-;;     (let ((temp case-fold-search))
-;;       (setq case-fold-search t)
-;;       (dolist (user (gyach-room-list))
-;; 	(while (not (null (search-forward user end t)))
-;; 	  (replace-match (propertize user 'face 'gyach-username-face))))
-;;       (setq case-fold-search temp))))
-
 (defun gyach-output-fill (start end)
   (fill-region start end))
   
-
 ;; if you have Oort(?) Gnus installed, try the following:
 
 ;; (add-to-list 'gyach-output-hook
