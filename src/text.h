@@ -28,5 +28,6 @@ extern char *find_whitespace(char *str);
 extern char *skip_whitespace(char *str);
 extern char *strip_tags(char *str);
 extern char *strip_ansi(char *str);
+extern void make_tokens(char *buf, int maxwords, int *nwords, char *words[], const char *delimiters);
 
 #endif

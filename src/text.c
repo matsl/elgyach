@@ -169,3 +169,54 @@ skip_whitespace(char *str)
 }
 
 
+static int
+is_in_charset(char x, const char *set)
+{
+  while (*set) 
+    {
+      if (*set == x)
+	return 1;
+      set++;
+    }
+  return 0;
+}
+
+
+void
+make_tokens(char *buf, int maxwords, int *nwords, char *words[], const char *delimiters)
+{
+  size_t buf_length = strlen(buf);
+  int words_count = 0;
+  int state = 0, last_state = 0;
+  size_t i;
+
+  *nwords = 0;
+
+  for (i = 0; i < buf_length; i++)
+    {
+      if (! is_in_charset(buf[i], delimiters))
+	state = 1;
+      else 
+	{
+	  state = 0;
+	  buf[i] = '\0';
+	}
+      if (state == 1 && last_state == 0)
+	(*nwords)++;
+      last_state = state;
+    }
+  for (i = 0; i < buf_length; i++)
+    {
+      while (! buf[i] && i < buf_length)
+	i++;
+      if (i < buf_length && words_count < maxwords)
+	{
+	  words[words_count] = buf + i;
+	  words_count++;
+	  while (buf[i] && i < buf_length)
+	    i++;
+	}
+      else 
+	break;
+    }
+}

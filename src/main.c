@@ -172,6 +172,7 @@ char *ymsg9_field( char *key ) {
 	return( result );
 }
 
+#define MAX_WORDS 1000
 
 void show_yahoo_packet() {
 	char buf[1024];  /* these are static so they aren't on the stack */
@@ -182,6 +183,11 @@ void show_yahoo_packet() {
 	char *src;
 	time_t time_now;
 	time_t exp_time;
+
+	int nwords = 0;
+	int max_words = MAX_WORDS;
+	char *words[MAX_WORDS];
+	int i;
 
 	if ( ymsg_sess->pkt.size ) {
 		split( ymsg_sess->pkt.data, "\xC0\x80" );
@@ -304,26 +310,13 @@ void show_yahoo_packet() {
 					}
 
 					strcpy( tmp, ymsg9_field( "109" ));
-					src = tmp;
-					ptr = tmp2;
-					while( *src ) {
-						*ptr = *(src++);
-						if ( *ptr == ',' ) {
-							ptr++;
-							*ptr = ' ';
-						}
-						ptr++;
-					}
-					*ptr = '\0';
 
-					if ( strcmp( ymsg9_field( "104" ), "" )) {
-						strcat( buf, "You see here: " );
-					} else {
-						strcat( buf, "And also: " );
-					}
-					strcat( buf, tmp2 );
-					strcat( buf, "\n" );
-					append_to_textbox( buf );
+					make_tokens(tmp, max_words, &nwords, words, ",");
+					for (i = 0; i < nwords; i++)
+					  {
+					    sprintf(buf, "%s enters the room\n", words[i]);
+					    append_to_textbox( buf );
+					  }
 
 				} else if (( ! strcmp( ymsg9_field( "108" ), "1" )) &&
 					( strcasecmp( ymsg9_field( "109" ), ymsg_sess->user ))) {
@@ -671,170 +664,171 @@ void chat_command( char *cmd ) {
 	}
 }
 
-int main( int argc, char **argv ) {
-	struct timeval tv;
-	time_t ping_time = 0;
-	fd_set set;
-	int ret;
-	int result;
-	char *ptr = input;
-	int len = 0;
-	int mode;
-	int c;
+int
+main(int argc, char **argv) {
+  struct timeval tv;
+  time_t ping_time = 0;
+  fd_set set;
+  int ret;
+  int result;
+  char *ptr = input;
+  int len = 0;
+  int mode;
+  int c;
 
-	ret = config_init();
-	if (ret != 0)
-	  return EXIT_FAILURE;
+  ret = config_init();
+  if (ret != 0)
+    return EXIT_FAILURE;
 
-	ret = text_init();
-	if (ret != 0)
-	  return EXIT_FAILURE;
+  ret = text_init();
+  if (ret != 0)
+    return EXIT_FAILURE;
 
-	memset( ymsg_sess, 0, sizeof(YMSG9_SESSION)); 
-	ymsg_sess->sock = -1; 
-	ymsg_sess->port = YMSG9_CHAT_PORT;
-	strcpy( ymsg_sess->room, "linux, freebsd, solaris:1" );
-	strcpy( ymsg_sess->host, "scs.yahoo.com" );
+  memset( ymsg_sess, 0, sizeof(YMSG9_SESSION)); 
+  ymsg_sess->sock = -1; 
+  ymsg_sess->port = YMSG9_CHAT_PORT;
+  strcpy( ymsg_sess->room, "linux, freebsd, solaris:1" );
+  strcpy( ymsg_sess->host, "scs.yahoo.com" );
 
-	while ((c = getopt(argc, argv, "u:p:r:s:fcb")) != -1) {
-		switch( c ) {
-			case 'u':	strcpy( ymsg_sess->user, optarg );
-						break;
-			case 'p':	strcpy( ymsg_sess->password, optarg );
-						break;
-			case 'r':	strcpy( ymsg_sess->room, optarg );
-						break;
-			case 's':	strcpy( ymsg_sess->host, optarg );
-						break;
-			case 'f':	fancy_gyach_text = 1;
-						break;
-			case 'c':	show_colors = 1;
-						break;
-			case 'b':	no_black = 1;
-						break;
+  while ((c = getopt(argc, argv, "u:p:r:s:fcb")) != -1) {
+    switch( c ) {
+    case 'u':	strcpy( ymsg_sess->user, optarg );
+      break;
+    case 'p':	strcpy( ymsg_sess->password, optarg );
+      break;
+    case 'r':	strcpy( ymsg_sess->room, optarg );
+      break;
+    case 's':	strcpy( ymsg_sess->host, optarg );
+      break;
+    case 'f':	fancy_gyach_text = 1;
+      break;
+    case 'c':	show_colors = 1;
+      break;
+    case 'b':	no_black = 1;
+      break;
+    }
+  }
+
+  if ( ! ymsg_sess->user[0] ) {
+    usage(argv[0], stderr);
+    return EXIT_FAILURE;
+  }
+
+  if ( ! ymsg_sess->password[0] ) {
+    printf( "Password: " );
+    if ( fgets( ymsg_sess->password, YMSG9_PASSWORD_SIZE, stdin )) {
+      if ( ymsg_sess->password[0] ) {
+	/* strip the newline */
+	ymsg_sess->password[strlen(ymsg_sess->password)-1] = '\0';
+	if ( fancy_gyach_text ) {
+	  printf( ANSI_UP
+		  "\r                                              \r" );
+	}
+      } else {
+	usage(argv[0], stderr);
+	return EXIT_FAILURE;
+      }
+    }
+  }
+
+
+  mode = fcntl( fileno( stdin ), F_GETFL );
+  fcntl( fileno( stdin ), F_SETFL, mode | O_NONBLOCK );
+  setvbuf( stdin, (char *)NULL, _IONBF, 0 );
+
+  result = ymsg9_open_socket( ymsg_sess );
+
+  connect_time = time(NULL);
+
+  if ( ! result ) {
+    printf( "error opening socket: %s\n", ymsg_sess->error_msg );
+    exit( 0 );
+  }
+
+  ymsg9_request_key( ymsg_sess );
+
+  while( ! ymsg_sess->quit ) {
+    /* now check for input on our socket */
+    FD_ZERO( &set );
+    if ( ymsg_sess->sock != -1 )
+      FD_SET( ymsg_sess->sock, &set );
+
+    FD_SET( fileno( stdin ), &set );
+
+    tv.tv_sec = 0;
+    tv.tv_usec = 250000;
+    ret = select( ymsg_sess->sock + 1, &set, NULL, NULL, &tv );
+
+    if ( ret ) {
+      if ( FD_ISSET( ymsg_sess->sock, &set )) {
+	if ( ymsg9_recv_data( ymsg_sess )) {
+	  show_yahoo_packet();
+	}
+      }
+
+      if ( FD_ISSET( fileno( stdin ), &set )) {
+	ret = read( fileno( stdin ), ptr, 2048 - len );
+	if ( fancy_gyach_text ) {
+	  if ( ret ) {
+	    if ( ret == 1 ) {
+	      if (( *ptr == '' ) ||
+		  ( *ptr == 127 )) {
+		if ( len > 0 ) {
+		  ptr--;
+		  *ptr = '\0';
+		  len = strlen( input );
+		  printf( "\b \b" ); fflush( stdout );
 		}
+	      } else {
+		ptr[ret] = '\0';
+		len += ret;
+		ptr += ret;
+	      }
+	    } else {
+	      ptr[ret] = '\0';
+	      len += ret;
+	      ptr += ret;
+	    }
+	  }
+
+	  if (( ret ) &&
+	      ( *(ptr-1) == '\n' )) {
+	    *(ptr-1) = '\0';
+	    if ( len != 1 ) {
+	      lf_from_input = 1;
+	      chat_command( input );
+	    }
+	    input[0] = '\0';
+	    ptr = input;
+	    len = 0;
+	  }
+	} else {
+	  if ( ret ) {
+	    ptr[ret] = '\0';
+	    len += ret;
+	    ptr += ret;
+
+	    if ( input[len-1] == '\n' ) {
+	      input[len-1] = '\0';
+	      if ( len != 1 ) {
+		chat_command( input );
+	      }
+	      input[0] = '\0';
+	      ptr = input;
+	      len = 0;
+	    }
+	  }
 	}
+      }
+    }
 
-	if ( ! ymsg_sess->user[0] ) {
-	  usage(argv[0], stderr);
-	  return EXIT_FAILURE;
-	}
+    /* ping regularly, every 5 minutes */
+    if ( ping_time < ( time(NULL) - ( 5 * 60 ))) {
+      ymsg9_ping( ymsg_sess );
+      ping_time = time(NULL);
+    }
+  }
 
-	if ( ! ymsg_sess->password[0] ) {
-		printf( "Password: " );
-		if ( fgets( ymsg_sess->password, YMSG9_PASSWORD_SIZE, stdin )) {
-			if ( ymsg_sess->password[0] ) {
-				/* strip the newline */
-				ymsg_sess->password[strlen(ymsg_sess->password)-1] = '\0';
-				if ( fancy_gyach_text ) {
-					printf( ANSI_UP
-						"\r                                              \r" );
-				}
-			} else {
-			  usage(argv[0], stderr);
-			  return EXIT_FAILURE;
-			}
-		}
-	}
-
-
-	mode = fcntl( fileno( stdin ), F_GETFL );
-	fcntl( fileno( stdin ), F_SETFL, mode | O_NONBLOCK );
-	setvbuf( stdin, (char *)NULL, _IONBF, 0 );
-
-	result = ymsg9_open_socket( ymsg_sess );
-
-	connect_time = time(NULL);
-
-	if ( ! result ) {
-		printf( "error opening socket: %s\n", ymsg_sess->error_msg );
-		exit( 0 );
-	}
-
-	ymsg9_request_key( ymsg_sess );
-
-	while( ! ymsg_sess->quit ) {
-		/* now check for input on our socket */
-		FD_ZERO( &set );
-		if ( ymsg_sess->sock != -1 )
-			FD_SET( ymsg_sess->sock, &set );
-
-		FD_SET( fileno( stdin ), &set );
-
-		tv.tv_sec = 0;
-		tv.tv_usec = 250000;
-		ret = select( ymsg_sess->sock + 1, &set, NULL, NULL, &tv );
-
-		if ( ret ) {
-			if ( FD_ISSET( ymsg_sess->sock, &set )) {
-				if ( ymsg9_recv_data( ymsg_sess )) {
-					show_yahoo_packet();
-				}
-			}
-
-			if ( FD_ISSET( fileno( stdin ), &set )) {
-				ret = read( fileno( stdin ), ptr, 2048 - len );
-				if ( fancy_gyach_text ) {
-					if ( ret ) {
-						if ( ret == 1 ) {
-							if (( *ptr == '' ) ||
-								( *ptr == 127 )) {
-								if ( len > 0 ) {
-									ptr--;
-									*ptr = '\0';
-									len = strlen( input );
-									printf( "\b \b" ); fflush( stdout );
-								}
-							} else {
-								ptr[ret] = '\0';
-								len += ret;
-								ptr += ret;
-							}
-						} else {
-							ptr[ret] = '\0';
-							len += ret;
-							ptr += ret;
-						}
-					}
-
-					if (( ret ) &&
-						( *(ptr-1) == '\n' )) {
-						*(ptr-1) = '\0';
-						if ( len != 1 ) {
-							lf_from_input = 1;
-							chat_command( input );
-						}
-						input[0] = '\0';
-						ptr = input;
-						len = 0;
-					}
-				} else {
-					if ( ret ) {
-						ptr[ret] = '\0';
-						len += ret;
-						ptr += ret;
-
-						if ( input[len-1] == '\n' ) {
-							input[len-1] = '\0';
-							if ( len != 1 ) {
-								chat_command( input );
-							}
-							input[0] = '\0';
-							ptr = input;
-							len = 0;
-						}
-					}
-				}
-			}
-		}
-
-		/* ping regularly, every 5 minutes */
-		if ( ping_time < ( time(NULL) - ( 5 * 60 ))) {
-			ymsg9_ping( ymsg_sess );
-			ping_time = time(NULL);
-		}
-	}
-
-	return( 0 );
+  return( 0 );
 }
 
