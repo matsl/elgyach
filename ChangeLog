@@ -1,3 +1,7 @@
+2003-08-09  Matthew Kennedy  <mkennedy@killr.ath.cx>
+
+	* src/yahoochat.c: removed send file code
+
 2003-06-03  Matthew Kennedy  <mkennedy@killr.ath.cx>
 
 	* elisp/gyach.el (gyach-preinput-hook): added hook for capturing
