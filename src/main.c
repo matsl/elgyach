@@ -494,9 +494,13 @@ ext_yahoo_chat_cat_xml(int id, char *xml)
 void 
 ext_yahoo_chat_join(int id, char *room, char *topic, YList *members, int fd)
 {
+  room = b64_encode_string(room);
+  topic = b64_encode_string(topic);
   print_message("(message :type herald :room \"%s\" :topic \"%s\")", room, topic);
+  g_free(room);
+  g_free(topic);
 
-  while(members) 
+  while (members) 
     {
       YList *n = members->next;
       ext_yahoo_chat_userjoin(id, room, members->data);
@@ -515,7 +519,7 @@ ext_yahoo_chat_userjoin(int id, char *room, struct yahoo_chat_member *who)
   else if (who->attribs & YAHOO_CHAT_FEMALE)
     sex = "female";
   else 
-    sex = "nil";
+    sex = "unknown";
 
   gchar *b64_room = b64_encode_string(room);
   gchar *b64_id = b64_encode_string(who->id);
@@ -617,7 +621,7 @@ ext_yahoo_got_im(int id, char *who, char *msg, long tm, int stat, int utf8)
   if (stat == 2) 
     {
       b64_who = b64_encode_string(who);
-      print_message("(message :type im-error :who \"%s\")", who);
+      print_message("(message :type im-error :who \"%s\")", b64_who);
       g_free(b64_who);
       return;
     }
@@ -632,17 +636,19 @@ ext_yahoo_got_im(int id, char *who, char *msg, long tm, int stat, int utf8)
       char timestr[255];
       strncpy(timestr, ctime((time_t *) &tm), sizeof(timestr));
       timestr[strlen(timestr) - 1] = '\0';
+      gchar *b64_timestr = b64_encode_string(timestr);
       b64_who = b64_encode_string(who);
       print_message("(message :type im-offline :time \"%s\" :who \"%s\" :message \"%s\")",
-        timestr, b64_who, b64_umsg);
+        b64_timestr, b64_who, b64_umsg);
+      g_free(b64_timestr);
       g_free(b64_who);
     } 
   else
     {
       b64_who = b64_encode_string(who);
       if(! strcmp(umsg, "<ding>"))
-        print_message("(message :type im-bell :who \"%s\")", who);
-      print_message("(message :type im :who \"%s\" :message \"%s\")", who, b64_umsg);
+        print_message("(message :type im-bell :who \"%s\")", b64_who);
+      print_message("(message :type im :who \"%s\" :message \"%s\")", b64_who, b64_umsg);
       g_free(b64_who);
     }
   if (utf8)
@@ -673,7 +679,7 @@ ext_yahoo_system_message(int id, char *msg)
 {
   msg = b64_encode_string(msg);
   print_message("(message :type system :message \"%s\")", msg);
-  FREE(msg);
+  g_free(msg);
 }
 
 void
