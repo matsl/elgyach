@@ -104,6 +104,7 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
+EXTRA_DIST = BUGS TODO ChangeLog
 SUBDIRS = src elisp doc
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -118,8 +119,9 @@ RECURSIVE_TARGETS = info-recursive dvi-recursive pdf-recursive \
 	installdirs-recursive install-recursive uninstall-recursive \
 	check-recursive installcheck-recursive
 DIST_COMMON = README AUTHORS COPYING ChangeLog INSTALL Makefile.am \
-	Makefile.in NEWS aclocal.m4 config.h.in configure configure.in \
-	depcomp elisp-comp install-sh missing mkinstalldirs
+	Makefile.in NEWS TODO aclocal.m4 config.h.in configure \
+	configure.in depcomp elisp-comp install-sh missing \
+	mkinstalldirs
 DIST_SUBDIRS = $(SUBDIRS)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
