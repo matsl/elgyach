@@ -265,11 +265,13 @@ version of `comint-simple-send'"
 		       (propertize user 'face 'gyach-username-face))
 		     (progn
 		       (setq text (gyach-unescape-newlines text))
-		       (gyach-replace-usernames 
 			(if (equal user gyach-yahoo-username)
-			    (propertize text 'face 'gyach-input-face)
-			    (propertize text 'face 'gyach-default-face))
-			'gyach-username-face))))))
+			    (gyach-replace-usernames 
+			     (propertize text 'face 'gyach-input-face) 
+			     'gyach-input-username-face)
+			    (gyach-replace-usernames
+			     (propertize text 'face 'gyach-default-face) 
+			     'gyach-username-face)))))))
 	((string-match (concat "^\\*\\ \\(" gyach-username-regexp "\\)\\(.*\\)") string)
 	 (let ((user (downcase (match-string 1 string)))
 	       (text (match-string 2 string)))
