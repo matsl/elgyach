@@ -4,3 +4,6 @@ Makefile.in
 cscope.*
 TAGS
 elgyach
+cscope.out
+cscope.files
+semantic.cache

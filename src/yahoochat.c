@@ -48,7 +48,7 @@
 #include <unistd.h>
 
 #include "yahoochat.h"
-#include "yahoo_md5.h"
+#include "yahoo.h"
 #include "socket.h"
 
 static u_char PACKET_BUFFER[MAX_PACKET_LENGTH + 1]; /* + 1 for a null terminator */
@@ -278,8 +278,8 @@ ymsg9_login(YMSG9_SESSION *session, const char  *key)
 
   len = snprintf(ptr, MAX_DATA_LENGTH, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                  "0", YMSG9_SEP, session->user, YMSG9_SEP,
-                 "6", YMSG9_SEP, getstr1(session->user, session->password, key), YMSG9_SEP,
-                 "96", YMSG9_SEP, getstr2(session->user, session->password, key), YMSG9_SEP,
+                 "6", YMSG9_SEP, getstr1_new(session->user, session->password, key), YMSG9_SEP,
+                 "96", YMSG9_SEP, getstr2_new(session->user, session->password, key), YMSG9_SEP,
                  "2", YMSG9_SEP, session->user, YMSG9_SEP,
                  "1", YMSG9_SEP, session->user, YMSG9_SEP);
   len += MAX_HEADER_LENGTH;

@@ -1,4 +1,5 @@
-/* yahoo_md5.h: 
+
+/* $Id$
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -18,8 +19,8 @@
  * Copyright (C) 2003 Matthew Kennedy <mkennedy@gentoo.org>
  */
 
-#ifndef YAHOO_MD5_H
-#define YAHOO_MD5_H
+#ifndef YAHOO_H
+#define YAHOO_H
 
 extern char *getstr1(char *username, char *password, const char *key);
 extern char *getstr2(char *username, char *password, const char *key);
