@@ -72,7 +72,7 @@
 (defvar gyach-suppress-enter-leave-messages nil
   "*If non-nil, suppress the display of enter/leave room messages")
 
-(defconst gyach-version "El-Gyach 1.0, the GNU Emacs Lisp interface to gyach-text")
+(defconst gyach-version "ElGyach 0.1.1, the GNU Emacs Lisp interface to Yahoo! Chat http://savannah.nongnu.org/projects/elgyach/")
 
 (defvar gyach-ignorables '()
   "List of fools to ignore")
