@@ -56,7 +56,6 @@ append_to_textbox(char *text)
   strip_tags(text); 
   strip_ansi(text); 
 
-  
   text = escape_to_line(text);
   if (text == NULL)
     {
