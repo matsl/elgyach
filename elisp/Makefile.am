@@ -1,2 +1,2 @@
-lisp_LISP = gyach.el gyach-extra.el
-DIST_SOURCES  = gyach.el gyach-extra.el
+lisp_LISP = gyach.el gyach-extra.el gyach-button.el gyach-faces.el
+DIST_SOURCES  = $(lisp_LISP)

@@ -25,6 +25,7 @@
 ;;
 
 (require 'gyach-faces)
+(require 'gyach-button)
 (require 'comint)
 
 (defgroup gyach nil
@@ -94,6 +95,10 @@
   a region) which are called on text outputed to the buffer" )
 
 (defvar gyach-room-list '())
+
+(defvar gyach-last-url nil)
+
+(defvar gyach-url-list '())
 
 ;;; Code:
 
@@ -245,9 +250,13 @@ version of `comint-simple-send'"
 
 (defun gyach-preoutput-filter-functions (string)
   "Clean up text before insertion"
+  ;; look for URLs
+  (when (not (null (string-match gyach-button-url-regexp string)))
+    (add-to-list 'gyach-url-list (replace-regexp-in-string "\\\\n" "" (match-string 0 string))))
+  ;; process kinds of output from sub-process
   (cond ((string-match (concat "^\\(" gyach-username-regexp "\\): \\(.*\\)") string)
 	 (let ((user (downcase (match-string 1 string)))
-	       (text (gyach-replace-usernames (match-string 2 string))))
+	       (text (match-string 2 string)))
 	   (if (member-ignore-case user gyach-ignorables)
 	       ""
 	     (format "<%s> %s" 
@@ -256,9 +265,11 @@ version of `comint-simple-send'"
 		       (propertize user 'face 'gyach-username-face))
 		     (progn
 		       (setq text (gyach-unescape-newlines text))
-		       (if (equal user gyach-yahoo-username)
-			   (propertize text 'face 'gyach-input-face)
-			   (propertize text 'face 'gyach-default-face)))))))
+		       (gyach-replace-usernames 
+			(if (equal user gyach-yahoo-username)
+			    (propertize text 'face 'gyach-input-face)
+			    (propertize text 'face 'gyach-default-face))
+			'gyach-username-face))))))
 	((string-match (concat "^\\*\\ \\(" gyach-username-regexp "\\)\\(.*\\)") string)
 	 (let ((user (downcase (match-string 1 string)))
 	       (text (match-string 2 string)))
@@ -268,14 +279,20 @@ version of `comint-simple-send'"
 		     (if (member-ignore-case user gyach-highlightables)
 			 (propertize user 'face 'gyach-username-face)
 			 (propertize user 'face 'gyach-username-face))
-		     (propertize (gyach-unescape-newlines text) 'face 'gyach-action-face)))))
+		     (gyach-replace-usernames 
+		      (propertize (gyach-unescape-newlines text) 'face 'gyach-action-face)
+		      'gyach-username-face)))))
 	((string-match (concat "^\\(" gyach-username-regexp "\\) \\(enters\\|leaves\\) the room") string)
 	 (let ((user (downcase (match-string 1 string)))
 	       (event (match-string 2 string)))
 	   (cond ((equal event "enters")
-		  (add-to-list 'gyach-room-list user))
+		  (message "Adding %s to room list" user)
+		  (add-to-list 'gyach-room-list user)
+		  (message "%d people in room" (length gyach-room-list)))
 		 ((equal event "leaves")
-		  (setq gyach-room-list (remove user gyach-room-list)))))
+		  (message "Removing %s from room list" user);
+		  (setq gyach-room-list (remove user gyach-room-list))
+		  (message "%d people in room" (length gyach-room-list)))))
 	 (if (not gyach-suppress-enter-leave-messages)
 	     (propertize 
 	      (concat "*** " (replace-regexp-in-string "\\\\n" "" string)) 
@@ -337,15 +354,21 @@ version of `comint-simple-send'"
 (defun gyach-clean-username (username)
   username)
 
-(defun gyach-replace-usernames (string)
+(defun gyach-replace-usernames (string username-face)
   (with-temp-buffer
     (erase-buffer)
     (insert string)
     (goto-char (point-min))
     (dolist (user (gyach-room-list))
       (while (search-forward user  nil t)
-	(replace-match (propertize (gyach-clean-username user) 'face 'gyach-username-face) nil t)))
+	(replace-match (propertize (gyach-clean-username user) 'face username-face) nil t)))
     (buffer-string)))
+
+(defun gyach-url-list ()
+  gyach-url-list)
+
+(defun gyach-last-url ()
+  (car (gyach-url-list)))
 
 (provide 'gyach)
 

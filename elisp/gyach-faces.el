@@ -51,6 +51,10 @@
   "Gyach face used for your input."
   :group 'gyach-faces)
 
+(defface gyach-input-username-face '((t (:bold t :foreground "brown")))
+  "Gyach face used for rendering usersname in your input."
+  :group 'gyach-faces)
+
 (provide 'gyach-faces)
 
 ;;; gyach-faces.el ends here
