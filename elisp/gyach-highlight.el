@@ -28,6 +28,11 @@
 
 (defvar gyach-highlightables '())
 
+(defcustom gyach-highlight-table 
+  '()
+  "Table mapping username to highlighting colors"
+  :group 'gyach)
+
 (defun gyach-highlightables ()
   gyach-highlightables)
 
@@ -37,9 +42,17 @@
 (defun gyach-custom-UNHIGHLIGHT (proc argument)
   (gyach-unhighlight argument))
 
-(defun gyach-highlight (user)
-  (string-match (concat "\\(" gyach-username-regexp "\\)") user)
-  (add-to-list 'gyach-highlightables (match-string 1 user)))
+(defun gyach-highlight (argument)
+  (string-match (concat "\\(" gyach-username-regexp "\\)\\(\\W+\\(.*\\)\\)?") argument)
+  (let ((user (match-string 1 argument))
+	(color-arg (match-string 2 argument)))
+    (cond ((string= (substring color-arg 0 1) "#")
+	   ;; hex-trippled
+	   (message "Hex tripplets not supported yet."))
+	  (t
+	   ;; worded color
+	   (add-to-list 'gyach-highlight-table (cons user color-arg))))
+    (add-to-list 'gyach-highlightables user)))
 
 (defun gyach-unhighlight (user)
   (string-match (concat "\\(" gyach-username-regexp "\\)") user)

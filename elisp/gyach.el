@@ -109,7 +109,7 @@ version of `comint-simple-send'"
 
   (let ((the-buffer (get-buffer-create buffer)))
     (set-buffer the-buffer)
-    (when (file-exists-p gyach-logo-file)
+    (when (and gyach-logo-file (file-exists-p gyach-logo-file))
       (insert-image (create-image gyach-logo-file)))
     (insert "\n"))
 

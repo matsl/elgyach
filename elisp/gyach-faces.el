@@ -67,6 +67,12 @@
   "ElGyach face used for rendering private messages"
   :group 'gyach-faces)
 
+(defcustom gyach-default-highlight-color "lemon chiffon"
+  "The default color for highlighting. ie. when the user issues
+  \"/highlight username\" without giving the color argument."
+  :group 'gyach
+  :type 'string)
+
 (defface gyach-highlight-default-face '((t (:inherit 'gyach-default-face :background "yellow")))
   "ElGyach face for highlightable default posts"
   :group 'gyach-faces)
@@ -82,6 +88,7 @@
 (defface gyach-server-info-face '((t (:bold t :foreground "orange")))
   "ElGyach server information face."
   :group 'gyach-faces)
+
 
 (defun gyach-clean-username (username)
   username)
@@ -164,6 +171,11 @@
 	      "\n\n")))
 	  (t 
 	   (error "Invalid post type: %s" type)))))
+
+(defun gyach-lookup-highlight-color (username)
+  (or (cdr (assoc username gyach-highlight-table))
+      gyach-default-highlight-color))
+
 
 (provide 'gyach-faces)
 
