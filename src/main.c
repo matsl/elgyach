@@ -1,4 +1,5 @@
-/* 
+/* -*- mode: c; mode: folding; eval: (c-set-offset 'arglist-cont-nonempty '+) -*-
+ *
  * Yahoo! Chat shell based on the sampple client distrubuted with libyahoo2
  *
  * Copyright (C) 2002-2004, Philip S Tellis <philip.tellis AT gmx.net>
@@ -47,11 +48,12 @@
 /* Get these from http://libyahoo2.sourceforge.net/ */
 #include <yahoo2.h>
 #include <yahoo2_callbacks.h>
+
 #include "yahoo_util.h"
+#include "base64.h"
+#include "misc.h"
 
-int fileno(FILE * stream);
-
-
+#define PING_TIMEOUT_INTERVAL 600
 #define MAX_PREF_LEN 255
 
 static char *local_host = NULL;
@@ -153,117 +155,92 @@ int ext_yahoo_log(char *fmt,...)
 	YAHOO_DEBUGLOG x; \
 	YAHOO_DEBUGLOG("\n"); }
 
-#define print_message(x) { printf x; printf("\n"); }
+void
+print_message0(char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vfprintf(stdout, fmt, ap);
+  va_end(ap);
+
+  fflush(stdout);
+}
+
+void
+print_message(char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vfprintf(stdout, fmt, ap);
+  va_end(ap);
+
+  putc('\n', stdout);
+  fflush(stdout);
+}
 
 static yahoo_local_account * ylad = NULL;
+
 static YList * buddies = NULL;
 
-static int expired(time_t timer)
+static char * 
+get_buddy_name(char * yid)
 {
-	if (timer && curTime >= timer)
-		return 1;
+  YList * b;
+  for (b = buddies; b; b = b->next) {
+    yahoo_account * ya = b->data;
+    if(!strcmp(yid, ya->yahoo_id))
+      return ya->name&&*ya->name?ya->name:ya->yahoo_id;
+  }
 
-	return 0;
+  return yid;
 }
 
-static void rearm(time_t *timer, int seconds)
+
+/* {{{ Timeout */
+
+static 
+int expired(time_t timer)
 {
-	time(timer);
-	*timer += seconds;
+  if (timer && curTime >= timer)
+    return 1;
+
+  return 0;
 }
 
-FILE *popen(const char *command, const char *type);
-int pclose(FILE *stream);
-int gethostname(char *name, size_t len);
-
-static char * get_local_addresses()
+static void 
+rearm(time_t *timer, int seconds)
 {
-	static char addresses[1024];
-	char buff[1024];
-	char gateway[16];
-	char  * c;
-	struct hostent * hn;
-	int i;
-	FILE * f;
-	f = popen("netstat -nr", "r");
-	if((int)f < 1)
-			goto IP_TEST_2;
-	while( fgets(buff, sizeof(buff), f)  != NULL ) {
-			c = strtok( buff, " " );
-			if( (strstr(c, "default") || strstr(c,"0.0.0.0") ) &&
-							!strstr(c, "127.0.0" ) )
-					break;
-	}
-	c = strtok( NULL, " " );
-	pclose(f);
-
-	strncpy(gateway,c, 16);
-
-
-
-	for(i = strlen(gateway); gateway[i] != '.'; i-- )
-		gateway[i] = 0;
-
-	gateway[i] = 0;
-
-	for(i = strlen(gateway); gateway[i] != '.'; i-- )
-		gateway[i] = 0;
-
-	f = popen("/sbin/ifconfig -a", "r");
-	if((int)f < 1)
-		goto IP_TEST_2;
-
-	while( fgets(buff, sizeof(buff), f) != NULL ) {
-		if( strstr(buff, "inet") && strstr(buff,gateway) )
-			break;
-	}
-	pclose(f);
-
-	c = strtok( buff, " " );
-	c = strtok( NULL, " " );
-
-	strncpy ( addresses, c, sizeof(addresses) );
-	c = strtok(addresses, ":" );
-	strncpy ( buff, c, sizeof(buff) );
-	if((c=strtok(NULL, ":")))
-		strncpy( buff, c, sizeof(buff) );
-
-	strncpy(addresses, buff, sizeof(addresses));
-
-	return addresses;
-		
-		
-IP_TEST_2:
-
-	gethostname(buff,sizeof(buff));
-
-	hn = gethostbyname(buff);
-	if(hn)
-		strncpy(addresses, inet_ntoa( *((struct in_addr*)hn->h_addr)), sizeof(addresses) );
-	else
-		addresses[0] = 0;
-
-	return addresses;
+  time(timer);
+  *timer += seconds;
 }
 
-static double get_time()
-{
-	struct timeval ct;
-	gettimeofday(&ct, 0);
 
-	/* return time in milliseconds */
-	return (ct.tv_sec * 1E3 + ct.tv_usec / 1E3);
+static double 
+get_time()
+{
+  struct timeval ct;
+  gettimeofday(&ct, 0);
+
+  return (ct.tv_sec * 1E3 + ct.tv_usec / 1E3); /* return time in milliseconds */
 }
 
-static int yahoo_ping_timeout_callback()
+static int 
+yahoo_ping_timeout_callback()
 {
-	print_message(("Sending a keep alive message"));
-	yahoo_keepalive(ylad->id);
-	rearm(&pingTimer, 600);
-	return 1;
+  print_message("(message :type ping-timeout)");
+  yahoo_keepalive(ylad->id);
+  rearm(&pingTimer, PING_TIMEOUT_INTERVAL);
+
+  return 1;
 }
 
-static int yahoo_webcam_timeout_callback(int id)
+/* }}} */
+/* {{{ Webcam */
+
+static int 
+yahoo_webcam_timeout_callback(int id)
 {
 	static unsigned image_num = 0;
 	unsigned char *image = NULL;
@@ -290,12 +267,119 @@ static int yahoo_webcam_timeout_callback(int id)
 		}
 	}
 
-	print_message(("Sending a webcam image (%d bytes)", length));
+	print_message("Sending a webcam image (%d bytes)", length);
 	yahoo_webcam_send_image(id, image, length, timestamp);
 	FREE(image);
 	rearm(&webcamTimer, 2);
 	return 1;
 }
+
+void ext_yahoo_got_webcam_image(int id, const char *who,
+		const unsigned char *image, unsigned int image_size, unsigned int real_size,
+		unsigned int timestamp)
+{
+	static unsigned char *cur_image = NULL;
+	static unsigned int cur_image_len = 0;
+	static unsigned int image_num = 0;
+	FILE* f_image;
+	char fname[1024];
+
+	/* copy image part to cur_image */
+	if (real_size)
+	{
+		if (!cur_image) cur_image = y_new0(unsigned char, image_size);
+		memcpy(cur_image + cur_image_len, image, real_size);
+		cur_image_len += real_size;
+	}
+
+	if (image_size == cur_image_len)
+	{
+	  print_message("Received a image update at %d (%d bytes)", timestamp, image_size);
+
+		/* if we recieved an image then write it to file */
+		if (image_size)
+		{
+			sprintf(fname, "images/%s_%.3d.jpc", who, image_num++);
+
+			if ((f_image = fopen(fname, "w")) != NULL) {
+				fwrite(cur_image, image_size, 1, f_image);
+				fclose(f_image);
+			} else {
+				printf("Error writing to %s\n", fname);
+			}
+			FREE(cur_image);
+			cur_image_len = 0;
+			if (image_num > 999) image_num = 0;
+		}
+	}
+}
+
+void ext_yahoo_webcam_viewer(int id, char *who, int connect)
+{
+	switch (connect)
+	{
+		case 0:
+			print_message("%s has stopped viewing your webcam", who);
+			break;
+		case 1:
+			print_message("%s has started viewing your webcam", who);
+			break;
+		case 2:
+			print_message("%s is trying to view your webcam", who);
+			yahoo_webcam_accept_viewer(id, who, accept_webcam_viewers);
+			break;
+	}
+}
+
+void ext_yahoo_webcam_closed(int id, char *who, int reason)
+{
+	switch(reason)
+	{
+		case 1:
+			print_message("%s stopped broadcasting", who);
+			break;
+		case 2:
+			print_message("%s cancelled viewing permission", who);
+			break;
+		case 3:
+			print_message("%s declines permission to view his/her webcam", who);
+			break;
+		case 4:
+			print_message("%s does not have his/her webcam online", who);
+			break;
+	}
+}
+
+void ext_yahoo_webcam_data_request(int id, int send)
+{
+	webcam_id = id;
+
+	if (send) {
+		print_message("Got request to start sending images");
+		if (!webcamTimer)
+			rearm(&webcamTimer, 2);
+	} else {
+		print_message("Got request to stop sending images");
+	}
+	send_webcam_images = send;
+}
+
+void ext_yahoo_webcam_invite(int id, char *from)
+{
+	print_message("Got a webcam invitation from %s", from);
+}
+
+void ext_yahoo_webcam_invite_reply(int id, char *from, int accept)
+{
+	if(accept) {
+		print_message("%s accepted webcam invitation...", from);
+	} else {
+		print_message("%s declined webcam invitation...", from);
+	}
+}
+
+/* }}} */
+/* {{{ Conferencing */
 
 YList * conferences = NULL;
 typedef struct {
@@ -305,18 +389,6 @@ typedef struct {
 	YList * members;
 	int joined;
 } conf_room;
-
-static char * get_buddy_name(char * yid)
-{
-	YList * b;
-	for (b = buddies; b; b = b->next) {
-		yahoo_account * ya = b->data;
-		if(!strcmp(yid, ya->yahoo_id))
-			return ya->name&&*ya->name?ya->name:ya->yahoo_id;
-	}
-
-	return yid;
-}
 
 static conf_room * find_conf_room_by_name_and_id(int id, const char * name)
 {
@@ -346,7 +418,7 @@ void ext_yahoo_got_conf_invite(int id, char *who, char *room, char *msg, YList *
 				who, room, msg));
 
 	for(; members; members=members->next)
-		print_message(("\t%s", (char *)members->data));
+		print_message("\t%s", (char *)members->data);
 	
 }
 void ext_yahoo_conf_userdecline(int id, char *who, char *room, char *msg)
@@ -382,7 +454,7 @@ void ext_yahoo_conf_userjoin(int id, char *who, char *room)
 		cr->members = y_list_append(cr->members, strdup(who));
 	}
 
-	print_message(("%s joined the conference %s", who, room));
+	print_message("%s joined the conference %s", who, room);
 
 }
 void ext_yahoo_conf_userleave(int id, char *who, char *room)
@@ -401,7 +473,7 @@ void ext_yahoo_conf_userleave(int id, char *who, char *room)
 		}
 	}
 
-	print_message(("%s left the conference %s", who, room));
+	print_message("%s left the conference %s", who, room);
 }
 void ext_yahoo_conf_message(int id, char *who, char *room, char *msg, int utf8)
 {
@@ -412,120 +484,208 @@ void ext_yahoo_conf_message(int id, char *who, char *room, char *msg, int utf8)
 
 	who = get_buddy_name(who);
 
-	print_message(("%s (in %s): %s", who, room, umsg));
+	print_message("%s (in %s): %s", who, room, umsg);
 
 	if(utf8)
 		FREE(umsg);
 }
 
-static void print_chat_member(struct yahoo_chat_member *ycm) 
-{
-	printf("%s (%s) ", ycm->id, ycm->alias);
-	printf(" Age: %d Sex: ", ycm->age);
-	if (ycm->attribs & YAHOO_CHAT_MALE) {
-		printf("Male");
-	} else if (ycm->attribs & YAHOO_CHAT_FEMALE) {
-		printf("Female");
-	} else {
-		printf("Unknown");
-	}
-	if (ycm->attribs & YAHOO_CHAT_WEBCAM) {
-		printf(" with webcam");
-	}
+/* }}} */
 
-	printf("  Location: %s", ycm->location);
+void 
+ext_yahoo_chat_cat_xml(int id, char *xml) 
+{
+  print_message("%s", xml);
 }
 
-void ext_yahoo_chat_cat_xml(int id, char *xml) 
+
+void 
+ext_yahoo_chat_join(int id, char *room, char *topic, YList *members, int fd)
 {
-	print_message(("%s", xml));
+  print_message("(message :type herald :room \"%s\" :topic \"%s\")", room, topic);
+
+  while(members) 
+    {
+      YList *n = members->next;
+      ext_yahoo_chat_userjoin(id, room, members->data);
+      FREE(members);
+      members = n;
+    }
 }
 
-void ext_yahoo_chat_join(int id, char *room, char * topic, YList *members, int fd)
+void
+ext_yahoo_chat_userjoin(int id, char *room, struct yahoo_chat_member *who)
 {
-	print_message(("You have joined the chatroom %s with topic %s", room, topic));
+  gchar *sex = NULL;
+  
+  if (who->attribs & YAHOO_CHAT_MALE)
+    sex = "male";
+  else if (who->attribs & YAHOO_CHAT_FEMALE)
+    sex = "female";
+  else 
+    sex = NULL;
 
-	while(members) {
-		YList *n = members->next;
+  print_message0("(message :type join :room \"%s\" :id \"%s\" ", room, who->id);
+  if (who->alias) 
+    print_message0(":alias \"%s\" ", who->alias);
+  else 
+    print_message0(":alias nil ");
+  if (who->age)
+    print_message0(":age %d ", who->age);
+  else 
+    print_message0(":age nil ");
+  if (sex)
+    print_message0(":sex %s ", sex);
+  else 
+    print_message0(":sex nil ");
+  if (who->location)
+    print_message0(":location \"%s\" ", who->location);
+  else 
+    print_message0(":location nil ");
 
-		printf("\t");
-		print_chat_member(members->data);
-		printf("\n");
-		FREE(((struct yahoo_chat_member *)members->data)->id);
-		FREE(((struct yahoo_chat_member *)members->data)->alias);
-		FREE(((struct yahoo_chat_member *)members->data)->location);
-		FREE(members->data);
-		FREE(members);
-		members=n;
-	}
-}
-void ext_yahoo_chat_userjoin(int id, char *room, struct yahoo_chat_member *who)
-{
-	print_chat_member(who);
-	print_message((" joined the chatroom %s", room));
-	FREE(who->id);
-	FREE(who->alias);
-	FREE(who->location);
-	FREE(who);
-}
-void ext_yahoo_chat_userleave(int id, char *room, char *who)
-{
-	print_message(("%s left the chatroom %s", who, room));
-}
-void ext_yahoo_chat_message(int id, char *who, char *room, char *msg, int msgtype, int utf8)
-{
-	char * umsg = msg;
-	char * charpos;
+  print_message(":webcam %s)", (who->attribs & YAHOO_CHAT_WEBCAM) ? "t" : "nil");
 
-	if(utf8)
-		umsg = y_utf8_to_str(msg);
-	/* Remove escapes */
-	charpos = umsg;
-	while(*charpos) {
-		if (*charpos == 0x1b) {
-			*charpos = ' ';
-		}
-		charpos++;
-	}
-
-	if (msgtype == 2) {
-		print_message(("(in %s) %s %s", room, who, umsg));
-	} else {
-		print_message(("(in %s) %s: %s", room, who, umsg));
-	}
-
-	if(utf8)
-		FREE(umsg);
+  FREE(who->id);
+  FREE(who->alias);
+  FREE(who->location);
+  FREE(who);
 }
 
-void ext_yahoo_status_changed(int id, char *who, int stat, char *msg, int away)
+void
+ext_yahoo_chat_userleave(int id, char *room, char *who)
 {
-	yahoo_account * ya=NULL;
-	YList * b;
-	for(b = buddies; b; b = b->next) {
-		if(!strcmp(((yahoo_account *)b->data)->yahoo_id, who)) {
-			ya = b->data;
-			break;
-		}
-	}
-	
-	if(msg)
-		print_message(("%s (%s) is now %s", ya?ya->name:who, who, msg))
-	else if(stat == YAHOO_STATUS_IDLE)
-		print_message(("%s (%s) idle for %d:%02d:%02d", ya?ya->name:who, who, 
-					away/3600, (away/60)%60, away%60))
-	else
-		print_message(("%s (%s) is now %s", ya?ya->name:who, who, 
-					yahoo_status_code(stat)))
+  print_message("(message :type leave :room \"%s\" :who \"%s\")", room, who);
+}
 
-	if(ya) {
-		ya->status = stat;
-		ya->away = away;
-		if(msg) {
-			FREE(ya->msg);
-			ya->msg = strdup(msg);
-		}
+void 
+ext_yahoo_chat_message(int id, char *who, char *room, char *msg, int msgtype, int utf8)
+{
+  gchar *umsg = msg;
+
+  if (utf8)
+    umsg = y_utf8_to_str(msg);
+  msg = b64_encode_string(umsg);
+  if (msgtype == 2)
+    print_message("(message :type emote :room \"%s\" :who \"%s\" :message \"%s\")", 
+      room, who, msg);
+  else
+    print_message("(message :type plain :room \"%s\" :who \"%s\" :message \"%s\")", 
+      room, who, msg);
+  if (utf8)
+    FREE(umsg);
+  FREE(msg);
+}
+
+void
+ext_yahoo_mail_notify(int id, char *from, char *subj, int count)
+{
+  if(! do_mail_notify)
+    return;
+
+  if (from && subj)
+    {
+      from = b64_encode_string(from);
+      subj = b64_encode_string(subj);
+      print_message("(message :type mail :from \"%s\" :subject \"%s\")", from, subj);
+      FREE(from);
+      FREE(subj);
+    }
+  if (count)
+    print_message("(message :type mail-count :count %d)", count);
+}
+
+void
+ext_yahoo_got_im(int id, char *who, char *msg, long tm, int stat, int utf8)
+{
+  gchar *umsg;
+  glong umsg_len;
+  if (stat == 2) 
+    {
+      print_message("(message :type im-error :who \"%s\")", who);
+      return;
+    }
+  if(! msg)
+    return;
+  if (utf8)
+    umsg = y_utf8_to_str(msg);
+  gchar *b64_umsg = b64_encode_string(umsg);
+  who = get_buddy_name(who);
+  if (tm) 
+    {
+      char timestr[255];
+      strncpy(timestr, ctime((time_t *) &tm), sizeof(timestr));
+      timestr[strlen(timestr) - 1] = '\0';
+      print_message("(message :type im-offline :time \"%s\" :who \"%s\" :message \"%s\")",
+        timestr, who, b64_umsg);
+    } 
+  else
+    {
+      if(! strcmp(umsg, "<ding>"))
+        print_message("(message :type im-bell :who \"%s\")", who);
+      print_message("(message :type im :who \"%s\" :message \"%s\")", who, b64_umsg);
+    }
+  if (utf8)
+    FREE(umsg);
+  FREE(b64_umsg);
+}
+
+void
+ext_yahoo_rejected(int id, char *who, char *msg)
+{
+  if (! msg)
+    {
+      msg = b64_encode_string(msg);
+      print_message("(message :type reject :who \"%s\" :message \"%s\")", who, msg);
+      FREE(msg)
+    }
+  else
+    print_message("(message :type reject :who \"%s\" :message nil)", who);
+}
+
+void 
+ext_yahoo_system_message(int id, char *msg)
+{
+  msg = b64_encode_string(msg);
+  print_message("(message :type system :message \"%s\")", msg);
+  FREE(msg);
+}
+
+void
+ext_yahoo_status_changed(int id, char *who, int stat, char *msg, int away)
+{
+  yahoo_account *ya = NULL;
+  YList * b;
+
+  for(b = buddies; b; b = b->next) {
+    if(! strcmp(((yahoo_account *)b->data)->yahoo_id, who)) {
+      ya = b->data;
+      break;
+    }
+  }
+  if (msg)
+    {
+      char *b64_msg = b64_encode_string(msg);
+      print_message("(message :type status :name \"%s\" :who \"%s\" :message \"%s\")", 
+	ya ? ya->name : who, who, b64_msg);
+      FREE(b64_msg);
+    }
+  else if (stat == YAHOO_STATUS_IDLE)
+    print_message("(message :type status-idle :name \"%s\" :who \"%s\" :time \"%d:%02d:%02d\")", 
+      ya ? ya->name : who, who, away / 3600, (away / 60) % 60, away % 60);
+  else
+    print_message("(message :type status-change :name \"%s\" :who \"%s\" :message \"%s\")", 
+      ya ? ya->name : who, who, yahoo_status_code(stat));
+
+  if (ya)
+    {
+      ya->status = stat;
+      ya->away = away;
+      if (msg) 
+	{
+	  FREE(ya->msg);
+	  ya->msg = strdup(msg);
 	}
+    }
 }
 
 void ext_yahoo_got_buddies(int id, YList * buds)
@@ -546,54 +706,13 @@ void ext_yahoo_got_buddies(int id, YList * buds)
 		ya->status = YAHOO_STATUS_OFFLINE;
 		buddies = y_list_append(buddies, ya);
 
-/*		print_message(("%s is %s", bud->id, bud->real_name));*/
+/*		print_message("%s is %s", bud->id, bud->real_name);*/
 	}
 }
 
-void ext_yahoo_got_ignore(int id, YList * igns)
+void 
+ext_yahoo_got_ignore(int id, YList * igns)
 {
-}
-
-void ext_yahoo_got_im(int id, char *who, char *msg, long tm, int stat, int utf8)
-{
-	char *umsg = msg;
-
-	if(stat == 2) {
-		LOG(("Error sending message to %s", who));
-		return;
-	}
-
-	if(!msg)
-		return;
-
-	if(utf8)
-		umsg = y_utf8_to_str(msg);
-	
-	who = get_buddy_name(who);
-
-	if(tm) {
-		char timestr[255];
-
-		strncpy(timestr, ctime((time_t *)&tm), sizeof(timestr));
-		timestr[strlen(timestr) - 1] = '\0';
-
-		print_message(("[Offline message at %s from %s]: %s", 
-				timestr, who, umsg))
-	} else {
-		if(!strcmp(umsg, "<ding>")) 
-			printf("\a");
-		print_message(("%s: %s", who, umsg))
-	}
-
-	if(utf8)
-		FREE(umsg);
-}
-
-void ext_yahoo_rejected(int id, char *who, char *msg)
-{
-	print_message(("%s has rejected you%s%s", who, 
-				(msg?" with the message:\n":"."), 
-				(msg?msg:"")));
 }
 
 void ext_yahoo_contact_added(int id, char *myid, char *who, char *msg)
@@ -610,158 +729,24 @@ void ext_yahoo_contact_added(int id, char *myid, char *who, char *msg)
 	}
 	strcat(buff, "Do you want to allow this [Y/N]?");
 
-/*	print_message((buff));
+/*	print_message(buff);
 	scanf("%c", &choice);
 	if(choice != 'y' && choice != 'Y')
 		yahoo_reject_buddy(id, who, "Thanks, but no thanks.");
 */
 }
 
-void ext_yahoo_typing_notify(int id, char *who, int stat)
+void 
+ext_yahoo_typing_notify(int id, char *who, int stat)
 {
-	if(stat && do_typing_notify)
-		print_message(("%s is typing...", who));
+  if (stat && do_typing_notify)
+    print_message("(message :typing \"%s\")", who);
 }
 
 void ext_yahoo_game_notify(int id, char *who, int stat)
 {
 }
 
-void ext_yahoo_mail_notify(int id, char *from, char *subj, int cnt)
-{
-	char buff[1024] = {0};
-	
-	if(!do_mail_notify)
-		return;
-
-	if(from && subj)
-		snprintf(buff, sizeof(buff), 
-				"You have new mail from %s about %s\n", 
-				from, subj);
-	if(cnt) {
-		char buff2[100];
-		snprintf(buff2, sizeof(buff2), 
-				"You have %d message%s\n", 
-				cnt, cnt==1?"":"s");
-		strcat(buff, buff2);
-	}
-
-	if(buff[0])
-		print_message((buff));
-}
-
-void ext_yahoo_got_webcam_image(int id, const char *who,
-		const unsigned char *image, unsigned int image_size, unsigned int real_size,
-		unsigned int timestamp)
-{
-	static unsigned char *cur_image = NULL;
-	static unsigned int cur_image_len = 0;
-	static unsigned int image_num = 0;
-	FILE* f_image;
-	char fname[1024];
-
-	/* copy image part to cur_image */
-	if (real_size)
-	{
-		if (!cur_image) cur_image = y_new0(unsigned char, image_size);
-		memcpy(cur_image + cur_image_len, image, real_size);
-		cur_image_len += real_size;
-	}
-
-	if (image_size == cur_image_len)
-	{
-		print_message(("Received a image update at %d (%d bytes)",
-			 timestamp, image_size));
-
-		/* if we recieved an image then write it to file */
-		if (image_size)
-		{
-			sprintf(fname, "images/%s_%.3d.jpc", who, image_num++);
-
-			if ((f_image = fopen(fname, "w")) != NULL) {
-				fwrite(cur_image, image_size, 1, f_image);
-				fclose(f_image);
-			} else {
-				printf("Error writing to %s\n", fname);
-			}
-			FREE(cur_image);
-			cur_image_len = 0;
-			if (image_num > 999) image_num = 0;
-		}
-	}
-}
-
-void ext_yahoo_webcam_viewer(int id, char *who, int connect)
-{
-	switch (connect)
-	{
-		case 0:
-			print_message(("%s has stopped viewing your webcam", who));
-			break;
-		case 1:
-			print_message(("%s has started viewing your webcam", who));
-			break;
-		case 2:
-			print_message(("%s is trying to view your webcam", who));
-			yahoo_webcam_accept_viewer(id, who, accept_webcam_viewers);
-			break;
-	}
-}
-
-void ext_yahoo_webcam_closed(int id, char *who, int reason)
-{
-	switch(reason)
-	{
-		case 1:
-			print_message(("%s stopped broadcasting", who));
-			break;
-		case 2:
-			print_message(("%s cancelled viewing permission", who));
-			break;
-		case 3:
-			print_message(("%s declines permission to view his/her webcam", who));
-			break;
-		case 4:
-			print_message(("%s does not have his/her webcam online", who));
-			break;
-	}
-}
-
-void ext_yahoo_webcam_data_request(int id, int send)
-{
-	webcam_id = id;
-
-	if (send) {
-		print_message(("Got request to start sending images"));
-		if (!webcamTimer)
-			rearm(&webcamTimer, 2);
-	} else {
-		print_message(("Got request to stop sending images"));
-	}
-	send_webcam_images = send;
-}
-
-void ext_yahoo_webcam_invite(int id, char *from)
-{
-	print_message(("Got a webcam invitation from %s", from));
-}
-
-void ext_yahoo_webcam_invite_reply(int id, char *from, int accept)
-{
-	if(accept) {
-		print_message(("%s accepted webcam invitation...", from));
-	} else {
-		print_message(("%s declined webcam invitation...", from));
-	}
-}
-
-void ext_yahoo_system_message(int id, char *msg)
-{
-	if(ignore_system)
-		return;
-
-	print_message(("Yahoo System Message: %s", msg));
-}
 
 void yahoo_logout()
 {
@@ -797,7 +782,7 @@ void yahoo_logout()
 
 	poll_loop=0;
 
-	print_message(("logged_out"));
+	print_message("logged_out");
 }
 
 void ext_yahoo_login(yahoo_local_account * ylad, int login_mode)
@@ -812,7 +797,7 @@ void ext_yahoo_login(yahoo_local_account * ylad, int login_mode)
 	yahoo_login(ylad->id, login_mode);
 
 /*	if (ylad->id <= 0) {
-		print_message(("Could not connect to Yahoo server.  Please verify that you are connected to the net and the pager host and port are correctly entered."));
+		print_message("Could not connect to Yahoo server.  Please verify that you are connected to the net and the pager host and port are correctly entered.");
 		return;
 	}
 */
@@ -830,7 +815,7 @@ void ext_yahoo_login_response(int id, int succ, char *url)
 
 	if(succ == YAHOO_LOGIN_OK) {
 		ylad->status = yahoo_current_status(id);
-		print_message(("logged in"));
+		print_message("logged in");
 		return;
 		
 	} else if(succ == YAHOO_LOGIN_UNAME) {
@@ -855,7 +840,7 @@ void ext_yahoo_login_response(int id, int succ, char *url)
 	}
 
 	ylad->status = YAHOO_STATUS_OFFLINE;
-	print_message((buff));
+	print_message(buff);
 	yahoo_logout();
 	poll_loop=0;
 }
@@ -1048,7 +1033,7 @@ void yahoo_callback(struct _conn *c, yahoo_input_condition cond)
 				"Yahoo read error: Server closed socket");
 
 		if(buff[0])
-			print_message((buff));
+			print_message(buff);
 	}
 }
 
@@ -1149,7 +1134,7 @@ static void process_commands(char *line)
 		msg = copy;
 		cr = find_conf_room_by_name_and_id(ylad->id, to);
 		if(!cr) {
-			print_message(("no such room: %s", copy));
+			print_message("no such room: %s", copy);
 			goto end_parse;
 		}
 		if(msg)
@@ -1159,18 +1144,18 @@ static void process_commands(char *line)
 		if(copy) {
 			conf_room * cr = find_conf_room_by_name_and_id(ylad->id, copy);
 			if(!cr) {
-				print_message(("no such room: %s", copy));
+				print_message("no such room: %s", copy);
 				goto end_parse;
 			}
-			print_message(("Room: %s", copy));
+			print_message("Room: %s", copy);
 			for(l = cr->members; l; l=l->next) {
-				print_message(("%s", (char *)l->data))
+			  print_message("%s", (char *)l->data);
 			}
 		} else {
-			print_message(("All Rooms:"));
+			print_message("All Rooms:");
 			for(l = conferences; l; l=l->next) {
 				conf_room * cr = l->data;
-				print_message(("%s", cr->room_name));
+				print_message("%s", cr->room_name);
 			}
 		}
 
@@ -1209,7 +1194,7 @@ static void process_commands(char *line)
 
 		cr = find_conf_room_by_name_and_id(ylad->id, room);
 		if(!cr) {
-			print_message(("no such room: %s", room));
+			print_message("no such room: %s", room);
 			y_list_free(l);
 			goto end_parse;
 		}
@@ -1225,7 +1210,7 @@ static void process_commands(char *line)
 		conf_room * cr = find_conf_room_by_name_and_id(ylad->id, copy);
 		YList * l;
 		if(!cr) {
-			print_message(("no such room: %s", copy));
+			print_message("no such room: %s", copy);
 			goto end_parse;
 		}
 
@@ -1243,7 +1228,7 @@ static void process_commands(char *line)
 		conf_room * cr = find_conf_room_by_name_and_id(ylad->id, copy);
 		
 		if(!cr) {
-			print_message(("no such room: %s", copy));
+			print_message("no such room: %s", copy);
 			goto end_parse;
 		}
 
@@ -1274,7 +1259,7 @@ static void process_commands(char *line)
 		
 		cr = find_conf_room_by_name_and_id(ylad->id, room);
 		if(!cr) {
-			print_message(("no such room: %s", room));
+			print_message("no such room: %s", room);
 			goto end_parse;
 		}
 
@@ -1368,11 +1353,9 @@ static void process_commands(char *line)
 			if(ya->status == YAHOO_STATUS_OFFLINE)
 				continue;
 			if(ya->msg)
-				print_message(("%s (%s) is now %s", ya->name, ya->yahoo_id, 
-							ya->msg))
+			  print_message("%s (%s) is now %s", ya->name, ya->yahoo_id, ya->msg);
 			else
-				print_message(("%s (%s) is now %s", ya->name, ya->yahoo_id, 
-						yahoo_status_code(ya->status)))
+			  print_message("%s (%s) is now %s", ya->name, ya->yahoo_id, yahoo_status_code(ya->status));
 		}
 	} else if(!strncasecmp(cmd, "NAM", strlen("NAM"))) {
 		struct yab * yab;
@@ -1577,53 +1560,53 @@ void ext_yahoo_got_search_result(int id, int found, int start, int total, YList 
 	LOG(("got search result"));
 }
 
-static void register_callbacks()
+static void 
+register_callbacks()
 {
 #ifdef USE_STRUCT_CALLBACKS
-	static struct yahoo_callbacks yc;
+  static struct yahoo_callbacks yc;
 
-	yc.ext_yahoo_login_response = ext_yahoo_login_response;
-	yc.ext_yahoo_got_buddies = ext_yahoo_got_buddies;
-	yc.ext_yahoo_got_ignore = ext_yahoo_got_ignore;
-	yc.ext_yahoo_got_identities = ext_yahoo_got_identities;
-	yc.ext_yahoo_got_cookies = ext_yahoo_got_cookies;
-	yc.ext_yahoo_status_changed = ext_yahoo_status_changed;
-	yc.ext_yahoo_got_im = ext_yahoo_got_im;
-	yc.ext_yahoo_got_conf_invite = ext_yahoo_got_conf_invite;
-	yc.ext_yahoo_conf_userdecline = ext_yahoo_conf_userdecline;
-	yc.ext_yahoo_conf_userjoin = ext_yahoo_conf_userjoin;
-	yc.ext_yahoo_conf_userleave = ext_yahoo_conf_userleave;
-	yc.ext_yahoo_conf_message = ext_yahoo_conf_message;
-	yc.ext_yahoo_chat_cat_xml = ext_yahoo_chat_cat_xml;
-	yc.ext_yahoo_chat_join = ext_yahoo_chat_join;
-	yc.ext_yahoo_chat_userjoin = ext_yahoo_chat_userjoin;
-	yc.ext_yahoo_chat_userleave = ext_yahoo_chat_userleave;
-	yc.ext_yahoo_chat_message = ext_yahoo_chat_message;
-	yc.ext_yahoo_chat_yahoologout = ext_yahoo_chat_yahoologout;
-	yc.ext_yahoo_chat_yahooerror = ext_yahoo_chat_yahooerror;
-	yc.ext_yahoo_got_webcam_image = ext_yahoo_got_webcam_image;
-	yc.ext_yahoo_webcam_invite = ext_yahoo_webcam_invite;
-	yc.ext_yahoo_webcam_invite_reply = ext_yahoo_webcam_invite_reply;
-	yc.ext_yahoo_webcam_closed = ext_yahoo_webcam_closed;
-	yc.ext_yahoo_webcam_viewer = ext_yahoo_webcam_viewer;
-	yc.ext_yahoo_webcam_data_request = ext_yahoo_webcam_data_request;
-	yc.ext_yahoo_got_file = ext_yahoo_got_file;
-	yc.ext_yahoo_contact_added = ext_yahoo_contact_added;
-	yc.ext_yahoo_rejected = ext_yahoo_rejected;
-	yc.ext_yahoo_typing_notify = ext_yahoo_typing_notify;
-	yc.ext_yahoo_game_notify = ext_yahoo_game_notify;
-	yc.ext_yahoo_mail_notify = ext_yahoo_mail_notify;
-	yc.ext_yahoo_got_search_result = ext_yahoo_got_search_result;
-	yc.ext_yahoo_system_message = ext_yahoo_system_message;
-	yc.ext_yahoo_error = ext_yahoo_error;
-	yc.ext_yahoo_log = ext_yahoo_log;
-	yc.ext_yahoo_add_handler = ext_yahoo_add_handler;
-	yc.ext_yahoo_remove_handler = ext_yahoo_remove_handler;
-	yc.ext_yahoo_connect = ext_yahoo_connect;
-	yc.ext_yahoo_connect_async = ext_yahoo_connect_async;
+  yc.ext_yahoo_add_handler = ext_yahoo_add_handler;
+  yc.ext_yahoo_chat_cat_xml = ext_yahoo_chat_cat_xml;
+  yc.ext_yahoo_chat_join = ext_yahoo_chat_join;
+  yc.ext_yahoo_chat_message = ext_yahoo_chat_message;
+  yc.ext_yahoo_chat_userjoin = ext_yahoo_chat_userjoin;
+  yc.ext_yahoo_chat_userleave = ext_yahoo_chat_userleave;
+  yc.ext_yahoo_chat_yahooerror = ext_yahoo_chat_yahooerror;
+  yc.ext_yahoo_chat_yahoologout = ext_yahoo_chat_yahoologout;
+  yc.ext_yahoo_conf_message = ext_yahoo_conf_message;
+  yc.ext_yahoo_conf_userdecline = ext_yahoo_conf_userdecline;
+  yc.ext_yahoo_conf_userjoin = ext_yahoo_conf_userjoin;
+  yc.ext_yahoo_conf_userleave = ext_yahoo_conf_userleave;
+  yc.ext_yahoo_connect = ext_yahoo_connect;
+  yc.ext_yahoo_connect_async = ext_yahoo_connect_async;
+  yc.ext_yahoo_contact_added = ext_yahoo_contact_added;
+  yc.ext_yahoo_error = ext_yahoo_error;
+  yc.ext_yahoo_game_notify = ext_yahoo_game_notify;
+  yc.ext_yahoo_got_buddies = ext_yahoo_got_buddies;
+  yc.ext_yahoo_got_conf_invite = ext_yahoo_got_conf_invite;
+  yc.ext_yahoo_got_cookies = ext_yahoo_got_cookies;
+  yc.ext_yahoo_got_file = ext_yahoo_got_file;
+  yc.ext_yahoo_got_identities = ext_yahoo_got_identities;
+  yc.ext_yahoo_got_ignore = ext_yahoo_got_ignore;
+  yc.ext_yahoo_got_im = ext_yahoo_got_im;
+  yc.ext_yahoo_got_search_result = ext_yahoo_got_search_result;
+  yc.ext_yahoo_got_webcam_image = ext_yahoo_got_webcam_image;
+  yc.ext_yahoo_log = ext_yahoo_log;
+  yc.ext_yahoo_login_response = ext_yahoo_login_response;
+  yc.ext_yahoo_mail_notify = ext_yahoo_mail_notify;
+  yc.ext_yahoo_rejected = ext_yahoo_rejected;
+  yc.ext_yahoo_remove_handler = ext_yahoo_remove_handler;
+  yc.ext_yahoo_status_changed = ext_yahoo_status_changed;
+  yc.ext_yahoo_system_message = ext_yahoo_system_message;
+  yc.ext_yahoo_typing_notify = ext_yahoo_typing_notify;
+  yc.ext_yahoo_webcam_closed = ext_yahoo_webcam_closed;
+  yc.ext_yahoo_webcam_data_request = ext_yahoo_webcam_data_request;
+  yc.ext_yahoo_webcam_invite = ext_yahoo_webcam_invite;
+  yc.ext_yahoo_webcam_invite_reply = ext_yahoo_webcam_invite_reply;
+  yc.ext_yahoo_webcam_viewer = ext_yahoo_webcam_viewer;
 
-	yahoo_register_callbacks(&yc);
+  yahoo_register_callbacks(&yc);
 	
 #endif
 }
-
