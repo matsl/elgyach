@@ -1,50 +1,47 @@
-2003-04-07  Matthew Kennedy  <mkennedy@killr.ath.cx>
+2003-06-03  Matthew Kennedy  <mkennedy@killr.ath.cx>
 
-	* Added more regex. Last commit before strip-down.
+	* elisp/gyach.el (gyach-preinput-hook): added hook for capturing
+	incoming text.
+	(gyach-prompt-for-details): refactoreed to support automatic log
+	in
 
-2003-03-27  Matthew Kennedy  <mbkennedy@austin.rr.com>
+2003-06-01  Matthew Kennedy  <mkennedy@killr.ath.cx>
 
-	* Added (ignore.[ch]) db-based ignore code
+	* elisp/gyach-ignore.el (gyach-ignore): take extra steps to make
+	username matching more robust.
 
-2002-10-18 ??:??  cpinkham
+2003-06-01  Matthew Kennedy  <mbkennedy@austin.rr.com>
 
-	* Released v0.0.4.
+	* elisp/gyach.el (elgyach): set scroll-conservatively back to 0
 
-2002-10-18 ??:??  cpinkham
+2003-05-31  Matthew Kennedy  <mbkennedy@austin.rr.com>
 
-	* Converted to using getopt() instead of fixed format command line args.
-	* Added ability to prompt for password when logging in instead of
-	  passing in on command line.
-	* Added ability to display some colors with -c option. (ANSI ESC sequences)
-	* Added ability to keep text entered on the bottom line of the screen
-	  rather than scrolling up the screen as new messages are posted to the
-	  room.  Requires -f command line argument.
-	* Added ability to change black text to default color for people running
-	  Gyach-Text with transparent term windows.  Requires -b command line
-	  argument.
+	* elisp/gyach-room.el: renamed /list to /names
 
-2002-10-18 ??:??  cpinkham
+2003-05-30  Matthew Kennedy  <mkennedy@killr.ath.cx>
 
-	* Released v0.0.3.
+	* src/main.c (cmd_exec): made shell output consistent with other
+	posts
 
-2002-10-18 ??:??  cpinkham
+2003-05-30  Matthew Kennedy  <mbkennedy@austin.rr.com>
 
-	* Fixed minor bugs, added few commands.
+	* elisp/gyach-room.el (gyach-custom-LIST): use
+	with-output-to-temp-buffer instead.
 
-2002-10-18 ??:??  cpinkham
+2003-05-29  Matthew Kennedy  <mkennedy@killr.ath.cx>
 
-	* Released v0.0.2.
+	* elisp/gyach.el (gyach-preoutput-filter-functions): moved all
+	display code out to gyach-faces.el
 
-2002-10-18 ??:??  cpinkham
+2003-05-28  Matthew Kennedy  <mkennedy@killr.ath.cx>
 
-	* Fixed minor bugs, added few commands.
+	* elisp/gyach.el (elgyach): changed default program to elgyach
+	(gyach-input-filter-functions): moved chatters list code out to
+	gyach-room.el
 
-2002-10-17 ??:??  cpinkham
+2003-05-28  Matthew Kennedy  <mbkennedy@austin.rr.com>
 
-	* Released v0.0.1a.
+	* elisp/gyach-room.el: moved room code from gyach.el
 
-2002-10-17 ??:??  cpinkham
+	* elisp/gyach.el (gyach-list): fixed room-list clobbering
 
-	* Created Gyach-Text program v0.0.1a from Gyach's yahoochat.[ch] library
-	  and trimmed down Gyach main.c file and required yahoo md5/crypt files
-	  (yahoo_crypt.c, yahoo_md5.c, yahoo_md5.h, md5.c, md5.h).

@@ -27,9 +27,6 @@ ElGyach TODO List
 
 * Add a command to turn on/off room enter/leave events
 
-* Track users (so that a /chatters command shows a list of chatters
-  present in the room)
-
 
 Local Variables: ***
 mode: text ***
