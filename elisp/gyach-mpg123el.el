@@ -1,9 +1,9 @@
-;;; gyach-version.el --- version from build system
+;;; gyach-mpg123el.el --- Interface to mpg123el via mpg123el-show
 
 ;; Copyright (C) 2003  Free Software Foundation, Inc.
 
 ;; Author: Matthew Kennedy <mkennedy@killr.ath.cx>
-;; Keywords: 
+;; Keywords: convenience
 
 ;; This file is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -26,23 +26,13 @@
 
 ;;; Code:
 
-(require 'comint)
+(require 'mpg123el-show)
 
-(defconst gyach-version "0.2"
-  "ElGyach version from build system.")
+(defun gyach-custom-PLAYING (proc arg)
+  (comint-send-string proc (format "%s\n\n" (mpg123el-show))))
 
-(defconst gyach-publicity-string
-  (concat "ElGyach " gyach-version 
-	  ", the GNU Emacs Lisp interface to Yahoo! Chat "
-	  "http://www.nongnu.org/elgyach/")
-  "Client advertisement string.  There is no real reason to
-change this.")
+;; Simple, isn't it?
 
-(defun gyach-custom-VERSION (proc argument)
-  "Advertise to other users what client you're chatting with."
-  (comint-send-string proc (format ": is conversing with you via %s\n\n" 
-				   gyach-publicity-string)))
+(provide 'gyach-mpg123el)
 
-(provide 'gyach-version)
-
-;;; gyach-version.el ends here
+;;; gyach-mpg123el.el ends here

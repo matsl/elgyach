@@ -36,6 +36,7 @@
 (require 'gyach-highlight)
 (require 'gyach-complete)
 (require 'gyach-custom)
+(require 'gyach-away)
 
 (require 'comint)
 
