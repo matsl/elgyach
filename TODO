@@ -11,13 +11,24 @@ ElGyach TODO List
   posters should appear in a gray font color, normal posters appear in
   black and more interesting posts appear in bold.
 
-* Add a logging mechanism.
+* Add a logging mechanism.  This should log the raw elgyach session
+  to an emacs buffer and possibly save it periodically to disk.  Each
+  entry should be time-stamped.
 
 * Add support for avatars
 
 * Add support for emoticons
 
 * Make URLs click-able.
+
+* Create and add a logo.  Add it to the ElGyach buffer when it starts.
+
+* Make the post echoing behavior configurable.
+
+* Add a command to turn on/off room enter/leave events
+
+* Track users (so that a /chatters command shows a list of chatters
+  present in the room)
 
 
 Local Variables: ***
