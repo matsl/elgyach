@@ -1,0 +1,108 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename elgyach.info
+@settitle ElGyach Manual 0.1.1
+@c %**end of header
+
+@copying
+This is manual for ElGyach (Version 0.1.1, updated 23 May 2003)
+     
+Copyright @copyright{} 2003 Free Software Foundation, Inc.
+@end copying
+
+@titlepage
+@title ElGyach Manual
+     
+@c The following two commands start the copyright page.
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+   
+@c Output the table of contents at the beginning.
+@contents
+
+@ifnottex
+@node Top
+@top ElGyach
+  
+@insertcopying
+@end ifnottex
+
+@menu
+* Installation::                
+* Customization::               
+* Getting Started::             
+* Index::                       Complete index.
+
+@end menu
+
+@node Installation
+@chapter Installation
+
+@cindex chapter, first
+
+Installation is covered in the @file{INSTALL} file.  If you did not
+override the configure script's  @command{--site-list} parameter,
+then most likely the ElGyach Emacs code was installed to someplace
+within your Emacs's @code{load-path}.
+
+If you overrode @command{--site-lisp}, then you may need to add the
+location of the installed ElGyach Emacs code to your @code{load-path}
+variable manually.  For example, if the ElGyach Emacs code was
+installed to your @file{~/elisp} directory, then you would add the
+following to your @file{~/.emacs}:
+
+@lisp
+(add-to-list 'load-path "~/elisp")
+@end lisp
+
+In either case you will need to add the following autoload to
+your @file{~/.emacs}:
+
+@lisp
+(autoload "gyach" "gyach" "Autoload for ElGyach")
+@end lisp 
+
+@node Customization
+@chapter Customization
+     
+@cindex chapter, first
+   
+Normally, a user will customize ElGyach by setting the
+@code{gyach-yahoo-username} and @code{gyach-yahoo-password} variables
+in their @file{~/.emacs}.  The following is an example:
+
+@lisp
+(setq gyach-yahoo-username "emacs_divine")
+(setq gyach-yahoo-password "censored")
+@end lisp
+
+If you would like ElGyach to fill text messages (ie. line wrapping),
+you can take advantage of the @code{gyach-mode-hook} variable:
+
+@lisp
+(add-hook 'gyach-mode-hook 
+  '(lambda ()
+     (setq fill-column 90)
+     (setq fill-prefix "  + ")))
+@end lisp
+
+@node Getting Started
+@chapter Getting Started
+
+@cindex chapter, first
+
+ElGyach is started with @key{M-x gyach RET}.  If you are starting a
+second ElGyach (you can have as many running simultaneously as you
+like), you can give the prefix-argument which will prompt for the
+name of the buffer: @key{C-u M-x gyach RET}.
+
+@cindex index entry, another
+     
+@node Index
+@unnumbered Index
+     
+@printindex cp
+    
+@bye
