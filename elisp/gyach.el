@@ -39,6 +39,7 @@
 ;;; Variables:
 
 (require 'comint)
+(require 'smiley)
 
 (defvar gyach-yahoo-username nil
   "Yahoo! username.")
@@ -80,6 +81,8 @@
   "List of fools to highlight")
 
 (defvar gyach-mode-hook '()) 
+
+(defvar gyach-use-smiley t)
 
 ;;; Faces:
 
@@ -263,7 +266,9 @@ version of `comint-simple-send'"
 	 string)))
 
 (defun gyach-output-filter-functions (string)
-  (fill-region comint-last-output-start (point)))
+  (fill-region comint-last-output-start (point))
+  (when gyach-use-smiley 
+    (smiley-region comint-last-output-start (point))))
 
 (defun gyach-input-filter-functions (string)
   "Intercept gyach.el command overrides."
