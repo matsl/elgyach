@@ -26,6 +26,8 @@
 
 ;;; Code:
 
+(require 'time-date)
+
 (defvar gyach-last-seen nil
   "When the user last issued an away command.")
 
