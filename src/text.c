@@ -140,12 +140,20 @@ strip_ansi(char *str)
 char *
 find_whitespace(char *str) 
 {
-  char *ptr = str;
+  while(*str && (!isspace(*str)))
+    str++;
 
-  while(*ptr && (!isspace(*ptr)))
-    ptr++;
+  return str;
+}
 
-  return ptr;
+unsigned long
+find_whitespace_offset(const char *str)
+{
+  unsigned long offset;
+
+  for (offset = 0; *str && ! isspace(*str); offset++);
+
+  return offset;
 }
 
 /* return a pointer to the first non-whitespace character in str

@@ -25,6 +25,7 @@ extern int text_init();
 extern void text_done();
 
 extern char *find_whitespace(char *str);
+extern unsigned long find_whitespace_offset(const char *str);
 extern char *skip_whitespace(char *str);
 extern char *strip_tags(char *str);
 extern char *strip_ansi(char *str);

@@ -14,4 +14,6 @@ elgyach_SOURCES = \
 	find.c find.h \
 	utils.c utils.h \
 	config_api.c config_api.h \
-	error.c error.h
+	error.c error.h \
+	input.c input.h \
+	display.c display.h

@@ -96,22 +96,21 @@ typedef struct YMSG9_SESSION_STRUCT {
 extern int ymsg9_open_socket(YMSG9_SESSION *session);
 extern int ymsg9_recv_data(YMSG9_SESSION *session);
 extern int ymsg9_request_key(YMSG9_SESSION *session);
-extern int ymsg9_login(YMSG9_SESSION *session, char *key);
+extern int ymsg9_login(YMSG9_SESSION *session, const char *key);
 extern int ymsg9_online(YMSG9_SESSION *session);
 extern int ymsg9_join(YMSG9_SESSION *session);
-extern int ymsg9_comment(YMSG9_SESSION *session, char *text);
-extern int ymsg9_emote(YMSG9_SESSION *session, char *text);
-extern int ymsg9_think(YMSG9_SESSION *session, char *text);
+extern int ymsg9_comment(YMSG9_SESSION *session, const char *text);
+extern int ymsg9_emote(YMSG9_SESSION *session, const char *text);
+extern int ymsg9_think(YMSG9_SESSION *session, const char *text);
 extern int ymsg9_logout(YMSG9_SESSION *session);
 extern int ymsg9_ping(YMSG9_SESSION *session);
-extern int ymsg9_away(YMSG9_SESSION *session, char *msg);
+extern int ymsg9_away(YMSG9_SESSION *session, const char *msg);
 extern int ymsg9_back(YMSG9_SESSION *session);
-extern int ymsg9_pm(YMSG9_SESSION *session, char *remote_user, char *msg);
-extern int ymsg9_add_buddy(YMSG9_SESSION *session, char *friend);
-extern int ymsg9_remove_buddy(YMSG9_SESSION *session, char *friend);
-extern int ymsg9_goto(YMSG9_SESSION *session, char *friend);
-extern int ymsg9_invite(YMSG9_SESSION *session, char *remote_user, char *room);
-extern int ymsg9_typing(YMSG9_SESSION *session, char *remote_user, int typing);
-extern int ymsg9_send_file(YMSG9_SESSION *session, char *who, char *msg, char *filename);
+extern int ymsg9_pm(YMSG9_SESSION *session, char const *remote_user, const char *msg);
+extern int ymsg9_add_buddy(YMSG9_SESSION *session, const char *friend);
+extern int ymsg9_remove_buddy(YMSG9_SESSION *session, const char *friend);
+extern int ymsg9_goto(YMSG9_SESSION *session, const char *friend);
+extern int ymsg9_invite(YMSG9_SESSION *session, const char *remote_user, const char *room);
+extern int ymsg9_typing(YMSG9_SESSION *session, const char *remote_user, int typing);
 
 #endif

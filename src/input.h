@@ -1,4 +1,4 @@
-/* error.h: error output etc.
+/* input.h: command input handler
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -15,17 +15,17 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
  * MA 02111-1307, USA.
  *
- * Copyright (C) 2003 Matthew Kennedy
- *
- * mkennedy@gentoo.org
+ * Copyright (C) 2003 Matthew Kennedy <mkennedy@gentoo.org>
  */
 
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef INPUT_H
+#define INPUT_H
 
-#include "yahoochat.h"
+#define MAX_COMMAND_LENGTH 20
 
-extern void fatal(YMSG9_SESSION *session);
-extern void warn(YMSG9_SESSION *session);
+extern int input_init();
+extern void input_done();
+
+extern int input_handler(YMSG9_SESSION *session, char *input);
 
 #endif

@@ -1,4 +1,4 @@
-/* error.h: error output etc.
+/* display.h: handle incoming packets
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -15,17 +15,14 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
  * MA 02111-1307, USA.
  *
- * Copyright (C) 2003 Matthew Kennedy
- *
- * mkennedy@gentoo.org
+ * Copyright (C) 2003 Matthew Kennedy <mkennedy@gentoo.org>
  */
 
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef DISPLAY_H
+#define DISPLAY_H
 
 #include "yahoochat.h"
 
-extern void fatal(YMSG9_SESSION *session);
-extern void warn(YMSG9_SESSION *session);
+extern int display_packet(YMSG9_SESSION *session);
 
 #endif

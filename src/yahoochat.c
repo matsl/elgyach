@@ -271,15 +271,15 @@ ymsg9_request_key(YMSG9_SESSION *session)
 
 /* CONVERTED */
 int 
-ymsg9_login(YMSG9_SESSION *session, char *key) 
+ymsg9_login(YMSG9_SESSION *session, const char  *key) 
 {
   u_char *ptr = ymsg9_header(session, YMSG9_LOGIN);
   int len;
 
   len = snprintf(ptr, MAX_DATA_LENGTH, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                  "0", YMSG9_SEP, session->user, YMSG9_SEP,
-                 "6", YMSG9_SEP, getstr1( session->user, session->password, key ), YMSG9_SEP,
-                 "96", YMSG9_SEP, getstr2( session->user, session->password, key ), YMSG9_SEP,
+                 "6", YMSG9_SEP, getstr1(session->user, session->password, key), YMSG9_SEP,
+                 "96", YMSG9_SEP, getstr2(session->user, session->password, key), YMSG9_SEP,
                  "2", YMSG9_SEP, session->user, YMSG9_SEP,
                  "1", YMSG9_SEP, session->user, YMSG9_SEP);
   len += MAX_HEADER_LENGTH;
@@ -326,7 +326,7 @@ ymsg9_join(YMSG9_SESSION *session)
 /* CONVERTED */
 
 int
-ymsg9_comment(YMSG9_SESSION *session, char *text) 
+ymsg9_comment(YMSG9_SESSION *session, const char *text) 
 {
   u_char *ptr = ymsg9_header(session, YMSG9_COMMENT);
   int len;
@@ -344,7 +344,7 @@ ymsg9_comment(YMSG9_SESSION *session, char *text)
 
 /* CONVERTED */
 int
-ymsg9_emote(YMSG9_SESSION *session, char *text)
+ymsg9_emote(YMSG9_SESSION *session, char const *text)
 {
   u_char *ptr = ymsg9_header(session, YMSG9_COMMENT);
   int len;
@@ -362,7 +362,7 @@ ymsg9_emote(YMSG9_SESSION *session, char *text)
 
 /* CONVERTED */
 int 
-ymsg9_think(YMSG9_SESSION *session, char *text) 
+ymsg9_think(YMSG9_SESSION *session, const char *text) 
 {
   u_char *ptr = ymsg9_header(session, YMSG9_COMMENT);
   int len;
@@ -410,7 +410,7 @@ ymsg9_ping(YMSG9_SESSION *session)
 
 /* CONVERTED */
 int 
-ymsg9_pm(YMSG9_SESSION *session, char *remote_user, char *msg)
+ymsg9_pm(YMSG9_SESSION *session, const char *remote_user, const char *msg)
 {
   u_char *ptr = ymsg9_header(session, YMSG9_PM);
   int len;
@@ -430,7 +430,7 @@ ymsg9_pm(YMSG9_SESSION *session, char *remote_user, char *msg)
 
 /* CONVERTED */
 int 
-ymsg9_add_buddy(YMSG9_SESSION *session, char *friend) 
+ymsg9_add_buddy(YMSG9_SESSION *session, const char *friend) 
 {
   u_char *ptr = ymsg9_header(session, YMSG9_ADD_BUDDY);
   int len;
@@ -447,7 +447,7 @@ ymsg9_add_buddy(YMSG9_SESSION *session, char *friend)
 
 /* CONVERTED */
 int 
-ymsg9_remove_buddy(YMSG9_SESSION *session, char *friend) 
+ymsg9_remove_buddy(YMSG9_SESSION *session, const char *friend) 
 {
   u_char *ptr = ymsg9_header(session, YMSG9_REM_BUDDY);
   int len;
@@ -465,7 +465,7 @@ ymsg9_remove_buddy(YMSG9_SESSION *session, char *friend)
 
 /* CONVERTED */
 int 
-ymsg9_goto(YMSG9_SESSION *session, char *friend) 
+ymsg9_goto(YMSG9_SESSION *session, const char *friend) 
 {
   u_char *ptr = ymsg9_header(session, YMSG9_GOTO);
   int len;
@@ -482,7 +482,7 @@ ymsg9_goto(YMSG9_SESSION *session, char *friend)
 
 /* CONVERTED */
 int
-ymsg9_invite(YMSG9_SESSION *session, char *remote_user, char *room)
+ymsg9_invite(YMSG9_SESSION *session, const char *remote_user, const char *room)
 {
   u_char *ptr = ymsg9_header(session, YMSG9_INVITE);
   int len;
@@ -498,3 +498,4 @@ ymsg9_invite(YMSG9_SESSION *session, char *remote_user, char *room)
 
   return 0;
 }
+

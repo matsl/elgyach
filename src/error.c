@@ -26,13 +26,13 @@
 #include "error.h"
 
 void 
-fatal(YMSG_SESSION *session)
+fatal(YMSG9_SESSION *session)
 {
   warn(session);
 }
 
 void 
-warn(YMSG_SESSION *session)
+warn(YMSG9_SESSION *session)
 {
   int unknown = session->error_msg == NULL;
 

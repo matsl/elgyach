@@ -1,4 +1,7 @@
 
+
+#define INPUT_BUFFER_LENGTH 2048
+
 #define ANSI_ESCAPE '\033'
 
 #define ANSI_ATTR_RESET  "\033[0m"
@@ -16,5 +19,5 @@
 #define ANSI_HOME "\033[H"
 #define ANSI_UP "\033[1A"
 
-int split( char *str, char *connector );
-void show_yahoo_packet();
+extern int split( char *str, char *connector );
+extern void show_yahoo_packet();
