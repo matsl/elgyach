@@ -1,0 +1,50 @@
+2003-04-07  Matthew Kennedy  <mkennedy@killr.ath.cx>
+
+	* Added more regex. Last commit before strip-down.
+
+2003-03-27  Matthew Kennedy  <mbkennedy@austin.rr.com>
+
+	* Added (ignore.[ch]) db-based ignore code
+
+2002-10-18 ??:??  cpinkham
+
+	* Released v0.0.4.
+
+2002-10-18 ??:??  cpinkham
+
+	* Converted to using getopt() instead of fixed format command line args.
+	* Added ability to prompt for password when logging in instead of
+	  passing in on command line.
+	* Added ability to display some colors with -c option. (ANSI ESC sequences)
+	* Added ability to keep text entered on the bottom line of the screen
+	  rather than scrolling up the screen as new messages are posted to the
+	  room.  Requires -f command line argument.
+	* Added ability to change black text to default color for people running
+	  Gyach-Text with transparent term windows.  Requires -b command line
+	  argument.
+
+2002-10-18 ??:??  cpinkham
+
+	* Released v0.0.3.
+
+2002-10-18 ??:??  cpinkham
+
+	* Fixed minor bugs, added few commands.
+
+2002-10-18 ??:??  cpinkham
+
+	* Released v0.0.2.
+
+2002-10-18 ??:??  cpinkham
+
+	* Fixed minor bugs, added few commands.
+
+2002-10-17 ??:??  cpinkham
+
+	* Released v0.0.1a.
+
+2002-10-17 ??:??  cpinkham
+
+	* Created Gyach-Text program v0.0.1a from Gyach's yahoochat.[ch] library
+	  and trimmed down Gyach main.c file and required yahoo md5/crypt files
+	  (yahoo_crypt.c, yahoo_md5.c, yahoo_md5.h, md5.c, md5.h).
