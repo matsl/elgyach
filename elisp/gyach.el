@@ -74,6 +74,8 @@ gyach-yahoo-room and gyach-yahoo-server."
 	  (list "s" gyach-yahoo-server)
 	  gyach-program-arguments))
 
+(defvar comint-input-sender-no-newline nil)
+
 (defun gyach-simple-send (proc string)
   "Gyach function for sending to PROC input STRING.
 This just sends STRING plus a newline. To override this, set the
@@ -110,6 +112,7 @@ version of `comint-simple-send'"
       (insert-image (create-image gyach-logo-file)))
     (insert "\n"))
 
+  (gyach-custom-restore-state-maybe)
   (gyach-prompt-for-details)
 
   (if (not (comint-check-proc buffer))
@@ -132,10 +135,16 @@ version of `comint-simple-send'"
   (set (make-local-variable 'comint-input-sender) 'gyach-simple-send)
   (set (make-local-variable 'scroll-conservatively) 0)
   (set (make-local-variable 'comint-scroll-show-maximum-output) nil)
+
   (add-hook 'comint-preoutput-filter-functions 'gyach-preoutput-filter-functions nil t)
+  (add-hook 'comint-output-filter-functions 'gyach-output-filter-functions nil t)
   (add-hook 'comint-input-filter-functions 'gyach-input-filter-functions nil t)
-  (remove-hook 'comint-output-filter-functions 'comint-postoutput-scroll-to-bottom t)
-  (add-hook 'comint-output-filter-functions 'gyach-output-filter-functions nil t))
+
+  (mapcar '(lambda (hook)
+	     (remove-hook hook t t))
+	  '(comint-preoutput-filter-functions comint-output-filter-functions comint-input-filter-functions))
+  (remove-hook 'comint-output-filter-functions 'comint-postoutput-scroll-to-bottom t))
+
 
 
 (defun gyach-preoutput-filter-functions (string)
@@ -170,9 +179,9 @@ version of `comint-simple-send'"
 	       (gyach-make-rendered-text event-type user nil))))
 	;; initialization messages
 	((string-match (concat "^init room \\(.*\\)") string)
-	 (let ((room-list (split-string (replace-regexp-in-string 
-					 "\\\\n" "" 
-					 (downcase (match-string 1 string))) "," t)))
+	 (let ((room-list (remove "" (split-string 
+			   (replace-regexp-in-string "\\\\n" "" (downcase (match-string 1 string)))
+			   ","))))
 	   (dolist (user room-list)
 	     (gyach-room-list-add user))
 	   (gyach-make-rendered-text 'names nil room-list)))
@@ -185,7 +194,9 @@ version of `comint-simple-send'"
 		       string)
 	 (let ((user (downcase (match-string 1 string)))
 	       (text (match-string 2 string)))
-	   (if (gyach-is-ignorable user) "" (gyach-make-rendered-text 'private user text))))
+	   (if (gyach-is-ignorable user) 
+	       "" 
+	     (gyach-make-rendered-text 'private user text))))
 	(t 
 	 string)))
 
@@ -206,6 +217,10 @@ version of `comint-simple-send'"
 	       gyach-command-arg (cons (downcase (match-string 1 string)) (match-string 2 string))))
 	(t
 	  (setq gyach-dont-send nil))))
+
+(defun gyach-custom-QUIT (proc arg)
+  (kill-process proc)
+  (gyach-save))
 
 (define-key comint-mode-map [?\M-\t] 'ispell-complete-word)
 (define-key comint-mode-map [?\t] 'gyach-complete)

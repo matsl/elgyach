@@ -105,7 +105,7 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 lisp_LISP = gyach.el gyach-extra.el gyach-button.el gyach-faces.el gyach-url.el \
-	gyach-state.el gyach-version.el 
+	gyach-state.el gyach-events.el gyach-room.el gyach-version.el 
 
 DIST_SOURCES = $(lisp_LISP) gyach-version.el.in
 EXTRA_DIST = gyach-version.el.in
@@ -117,8 +117,9 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 LISP = $(lisp_LISP)
 
-ELCFILES = gyach-button.elc gyach-extra.elc gyach-faces.elc \
-	gyach-state.elc gyach-url.elc gyach-version.elc gyach.elc
+ELCFILES = gyach-button.elc gyach-events.elc gyach-extra.elc \
+	gyach-faces.elc gyach-room.elc gyach-state.elc gyach-url.elc \
+	gyach-version.elc gyach.elc
 elisp_comp = $(top_srcdir)/elisp-comp
 DIST_COMMON = Makefile.am Makefile.in
 all: $(BUILT_SOURCES)
@@ -293,7 +294,7 @@ uninstall-am: uninstall-info-am uninstall-lispLISP
 
 
 gyach-version.el: Makefile
-	sed -e "s/VERSION/$(VERSION)/g" <$@.in >$@
+	sed -e "s/BUILD_VERSION/$(VERSION)/g" <$@.in >$@
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

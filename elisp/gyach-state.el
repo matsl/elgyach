@@ -55,6 +55,12 @@
   (message "Restoring ElGyach state.")
   (gyach-load))
 
+(defun gyach-custom-restore-state-maybe ()
+  "Reload the application's state if the state file exists."
+  (when (and (file-exists-p gyach-save-file)
+	     (file-readable-p gyach-save-file))
+    (gyach-load)))
+
 (provide 'gyach-state)
 
 ;;; gyach-state.el ends here

@@ -48,7 +48,11 @@
     (comint-send-string proc result)))
 
 (defun gyach-output-fill (start end)
+;;  (message (buffer-substring start (point-max)))
+;;  (message (buffer-substring start (point-max)))
+;;  (comint-kill-input)
   (fill-region start end))
+;;  (yank))
   
 ;; if you have Oort(?) Gnus installed, try the following:
 

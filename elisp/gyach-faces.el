@@ -138,14 +138,15 @@
 			(propertize (concat " " text) 'face 'gyach-action-face)
 			'gyach-username-face))))
 	  ((or (equal type 'enter) (equal type 'leave))
-	   (propertize 
-	    (concat "*** " user 
-		    (cond ((equal type 'leave)
-			   " left ")
-			  ((equal type 'enter)
-			   " entered "))
-		    "the room\n")
-	    'face 'gyach-event-face))
+	   (concat (propertize 
+		    (concat "*** " user 
+			    (cond ((equal type 'leave)
+				   " left ")
+				  ((equal type 'enter)
+				   " entered "))
+			    "the room")
+		    'face 'gyach-event-face)
+		   "\n"))
 	  ((equal type 'private)
 	   (concat
 	    (propertize (concat "*" user "* ") 'face 'gyach-private-message-username-face)
@@ -154,12 +155,13 @@
 	   (propertize (concat "*** " text) 'face 'gyach-server-info-face))
 	  ((equal type 'names)
 	   (let ((users text))
-	     (propertize 
-	      (concat "*** Users present: " 
-		      (reduce #'(lambda (x y) 
-				  (concat x " " y)) users) 
-		      "\n\n") 
-	      'face 'gyach-server-info-face)))
+	     (concat
+	      (propertize 
+	       (concat "*** Users present: " 
+		       (reduce #'(lambda (x y) 
+				   (concat x " " y)) users))
+	       'face 'gyach-server-info-face)
+	      "\n\n")))
 	  (t 
 	   (error "Invalid post type: %s" type)))))
 

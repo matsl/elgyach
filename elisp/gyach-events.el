@@ -34,10 +34,13 @@ the event type and and event argument."
   :type 'hook)
 
 (defun gyach-process-events (event-type argument)
+  "Process each event hooks in `gyach-event-hook' until one returns nil"
   (catch 'abort
     (dolist (h gyach-event-hook)
       (when (null (funcall h event-type argument))
 	(throw 'abort nil)))))
+
+
 
 (provide 'gyach-events)
 

@@ -34,7 +34,7 @@
 (defconst gyach-publicity-string
   (concat "ElGyach " gyach-version 
 	  ", the GNU Emacs Lisp interface to Yahoo! Chat "
-	  "http://savannah.nongnu.org/projects/elgyach/")
+	  "http://www.nongnu.org/elgyach/")
   "Client advertisement string.  There is no real reason to
 change this.")
 

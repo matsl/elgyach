@@ -29,9 +29,10 @@
 
 (defcustom gyach-pal-list nil
   "List of people to treat as pals.
-This list is appended to the `gaych-room-list' for completion.
+This list is appended to the `gyach-room-list' for completion.
 The reason being, that its not uncommon to get a PM from a friend
-who isn't in the room you're in at the moment."
+who isn't in the room you're in at the moment.  Thus
+`gyach-pal-list' serves as a whitelisting feature"
   :type 'list
   :group 'gyach)
 

@@ -26,6 +26,8 @@
 
 ;;; Code:
 
+(require 'cl)
+
 (defvar gyach-ignorables '())
 
 (defun gyach-ignorables ()
@@ -36,14 +38,12 @@
   (let ((fool-count (length (gyach-ignorables))))
     (comint-send-string 
      proc  
-     (cond ((= fool-count 0)
-	    ": hmmm... sadly, no fools have been ignored\n\n")
-	   ((= fool-count 1)
-	    (format ": %s is the only fool in my ignore list!\n\n" (car (gyach-ignorables))))
-	   (t
-	    (format ": %d fools currently ignored (last fool was %s)\n\n" 
-		    fool-count (car (gyach-ignorables))))))))
-
+     (case fool-count
+       (0 ": hmmm... sadly, no fools have been ignored\n\n")
+       (1 (format ": %s is the only fool in my ignore list!\n\n" (car (gyach-ignorables))))
+       (otherwise 
+	(format ": %d fools currently ignored (last fool was %s)\n\n" 
+		fool-count (car (gyach-ignorables))))))))
 
 (defun gyach-custom-IGNORE (proc argument)
   (gyach-ignore argument))
