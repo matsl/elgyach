@@ -46,15 +46,15 @@ typedef struct {
 
 static display_pair_t display_table[] = {
   {YMSG9_COMMENT, display_comment},
-  {YMSG9_PM, display_pm},
+  {YMSG9_PM,      display_pm},
   {YMSG9_PM_RECV, display_pm},
-  {YMSG9_EXIT, display_exit},
+  {YMSG9_EXIT,    display_exit},
   {YMSG9_GET_KEY, display_get_key},
-  {YMSG9_JOIN, display_join},
-  {YMSG9_LOGOUT, display_quit},
-  {YMSG9_COOKIE, display_cookie},
-  {YMSG9_ONLINE, display_online},
-  {YMSG9_NOTIFY, display_notify},
+  {YMSG9_JOIN,    display_join},
+  {YMSG9_LOGOUT,  display_quit},
+  {YMSG9_COOKIE,  display_cookie},
+  {YMSG9_ONLINE,  display_online},
+  {YMSG9_NOTIFY,  display_notify},
   {0, NULL}};
 
 static void
@@ -120,6 +120,7 @@ print_output(void)
 {
   fputs(output_buffer, stdout);
   fputc(0, stdout);
+  fflush(stdout);
 
   return 1;
 }
@@ -133,9 +134,9 @@ display_comment(YMSG9_SESSION *session)
   int count;
 
   if (strcmp(type, "1") == 0)
-    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[SAYS %s]%s", user, comment);
+    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "SAYS %s|%s", user, comment);
   else if (strcmp(type, "2") == 0)
-    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[DOES %s]%s", user, comment);
+    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "DOES %s|%s", user, comment);
   else 
     {
       fprintf(stderr, "Warning: Unknown field 124 value %s in comment packet\n", type);
@@ -153,7 +154,7 @@ display_pm(YMSG9_SESSION *session)
   char *comment = get_value_for_key("14");
   int count;
 
-  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[PM %s]%s", user, comment);
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "PM %s|%s", user, comment);
   output_buffer[count] = '\0';
   print_output();
 
@@ -219,23 +220,23 @@ display_join(YMSG9_SESSION *session)
 	{
 	  strncpy(session->room, room, YMSG9_ROOM_SIZE);
 	  session->room[YMSG9_ROOM_SIZE] = '\0';
-	  count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ROOM %s]", room);
+	  count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "ROOM %s|", room);
 	  output_buffer[count1] = '\0';
 
 	  if (! STREQ(get_value_for_key("105"), ""))
 	    {
-	      count2 = snprintf(output_buffer + count1, MAX_OUTPUT_LENGTH - count1, "[ROOMDATA %s]", get_value_for_key("105"));
+	      count2 = snprintf(output_buffer + count1, MAX_OUTPUT_LENGTH - count1, "ROOMDATA %s|", get_value_for_key("105"));
 	      output_buffer[count1 + count2] = '\0';
 	    }
 	}
-      count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ROOMINIT %s]", get_value_for_key("109"));
+      count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "ROOMINIT %s|", get_value_for_key("109"));
       output_buffer[count1] = '\0';
       print_output();
       return 1;
     }
   else if (STREQ(get_value_for_key("108"), "1"))
     {
-      count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ENTER %s]", get_value_for_key("109"));
+      count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "ENTER %s|", get_value_for_key("109"));
       output_buffer[count1] = '\0';
       print_output();
       return 1;
@@ -250,7 +251,7 @@ display_exit(YMSG9_SESSION *session)
   char *user = get_value_for_key("109");
   int count;
 
-  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[EXIT %s]", user);
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "EXIT %s|", user);
   output_buffer[count] = '\0';
   print_output();
   return 1;
@@ -264,7 +265,7 @@ display_get_key(YMSG9_SESSION *session)
 
   ymsg9_login(session, user);
   session->cookie[0] = '\0'; /* reset cookies */
-  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[LOGIN %s %d %s]", session->host, session->port, user);
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "LOGIN %s %d %s|", session->host, session->port, user);
   output_buffer[count] = '\0';
   print_output();
 
@@ -279,7 +280,7 @@ display_quit(YMSG9_SESSION *session)
   close(session->sock);
   session->sock = -1;
   session->quit = 1;
-  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[QUIT]");
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "QUIT|");
   output_buffer[count] = '\0';
   print_output();
 
@@ -307,7 +308,7 @@ display_cookie(YMSG9_SESSION *session)
 
   if (! STREQ(get_value_for_key("3"), ""))
     {
-      count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ONLINE]");
+      count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "ONLINE|");
       output_buffer[count] = '\0';
       print_output();
       ymsg9_online(session);

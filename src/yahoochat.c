@@ -191,7 +191,7 @@ ymsg9_header(YMSG9_SESSION *session, u_long pkt_type)
       ptr += 4;  
       break;
     default:
-      *((u_long *) ptr) = htonl(0x09000000);	
+      *((u_long *) ptr) = htonl(0x000b0000);	
       ptr += 4;  
       break;
     }
