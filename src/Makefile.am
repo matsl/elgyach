@@ -17,4 +17,5 @@ elgyach_SOURCES = \
 	error.c error.h \
 	input.c input.h \
 	display.c display.h \
-	sha.c sha.h
+	sha.c sha.h \
+	yahoo_fn.c yahoo_fn.h
