@@ -37,6 +37,19 @@
     (setq quote (replace-regexp-in-string "\n" " " quote))
     (comint-send-string proc (format "%s\n\n" quote))))
 
+(defun gyach-custom-EVAL (proc argument)
+  "Evaluate Emacs for all to stand in awe"
+  (let ((result))
+    (with-temp-buffer
+      (erase-buffer)
+      (eval-expression (read argument) t)
+      (goto-char (point-min))
+      (insert (format "%s => " argument))
+      (set-mark (point-min))
+      (goto-char (point-max))
+      (setq result (format "%s\n\n" (buffer-substring (mark) (point)))))
+    (comint-send-string proc result)))
+
 (defun gyach-import-inferior (file)
   "Import an ignore list (from gyach/curphoo/curfloo -- anything with an ignore per line)."
   (interactive
@@ -62,13 +75,28 @@
 		  (setq count (1+ count)))))))
 	(message "%d fools appended to your ignore list (%d total)" count (length gyach-ignorables))))))
 
-;; (add-hook 'gyach-hook 
-;; 	  '(lambda ()
-;; 	    (setq 
-;; 	     fill-column 90
-;; 	     fill-prefix "    ")))
+
+;; (defun gyach-output-username (start end)
+;;   (save-excursion
+;;     (goto-char start)
+;;     (let ((temp case-fold-search))
+;;       (setq case-fold-search t)
+;;       (dolist (user (gyach-room-list))
+;; 	(while (not (null (search-forward user end t)))
+;; 	  (replace-match (propertize user 'face 'gyach-username-face))))
+;;       (setq case-fold-search temp))))
+
+(defun gyach-output-fill (start end)
+  (fill-region start end))
+  
+(add-to-list 'gyach-output-hook
+	     'gyach-output-fill)
+
+;; if you have Oort(?) Gnus installed, try the following:
+
+;; (add-to-list 'gyach-output-hook
+;; 	     'smiley-region)
 
 (provide 'gyach-extra)
 
 ;;; gyach-extra.el ends here
-

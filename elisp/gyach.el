@@ -22,42 +22,52 @@
 
 ;;; Commentary:
 
-;; $Revision$
-
-;; Credits:
-
-;; Chris Pinkham a.k.a. Buy_More_Pepsi <buy_more_pepsi@yahoo.com> (for
-;; Gyach and Gyach-Text)
 ;;
-;; James H Gorrell <harley@bcm.tmc.edu> (for psql.el which I learnt a
-;; lot from)
 
-;; TODO
-
-;; Add optional text wrapping
-
-;;; Variables:
-
+(require 'gyach-faces)
 (require 'comint)
-(require 'smiley)
 
-(defvar gyach-yahoo-username nil
-  "Yahoo! username.")
+(defgroup gyach nil
+  "ElGyach Yahoo! Chat interface."
+  :link '(url-link "http://savannah.nongnu.org/projects/elgyach/")
+  :group 'processes)
 
-(defvar gyach-yahoo-password nil
-  "Yahoo! password.")
+(defcustom gyach-yahoo-username nil
+  "Yahoo! Chat username."
+  :group 'gyach
+  :type 'string)
 
-(defvar gyach-yahoo-room "Linux, FreeBSD, Solaris:1"
-  "Yahoo! chat room.")
+(defcustom gyach-yahoo-password nil
+  "Yahoo! Chat password."
+  :group 'gyach
+  :type 'string)
 
-(defvar gyach-yahoo-server "scs.yahoo.com"
-  "Yahoo! chat server.")
+(defcustom gyach-yahoo-room "Linux, FreeBSD, Solaris:1"
+  "Yahoo! Chat room.
+`gyach-yahoo-room' defines the initial or default room to enter"
+  :group 'gyach
+  :type 'string)
 
-(defvar gyach-program-name "elgyach"
-  "Gyach program to use.")
+(defcustom gyach-yahoo-server "scs.yahoo.com"
+  "Yahoo! Chat server."
+  :group 'gyach
+  :type 'string)
 
-(defvar gyach-save-file "~/.elgyach.el"
-  "There gyach.el should save and load state.")
+(defcustom gyach-program-name "elgyach"
+  "Gyach program to use."
+  :group 'gyach
+  :type 'string)
+
+(defcustom gyach-save-file "~/.elgyach.el"
+  "There gyach.el should save and load state."
+  :group 'gyach
+  :type 'string)
+
+(defcustom gyach-suppress-enter-leave-messages nil
+  "If non-nil, suppress the display of enter/leave room messages"
+  :group 'gyach
+  :type 'boolean)
+
 
 (defvar gyach-program-arguments '()
   "List of other arguments to pass to the gyach sub-process.")
@@ -69,9 +79,6 @@
 
 (defvar gyach-username-regexp "[a-zA-Z0-9_.@\\-]+")
 
-(defvar gyach-suppress-enter-leave-messages nil
-  "*If non-nil, suppress the display of enter/leave room messages")
-
 (defconst gyach-version "ElGyach 0.1.1, the GNU Emacs Lisp interface to Yahoo! Chat http://savannah.nongnu.org/projects/elgyach/")
 
 (defvar gyach-ignorables '()
@@ -82,27 +89,16 @@
 
 (defvar gyach-mode-hook '()) 
 
-(defvar gyach-use-smiley t)
+(defvar gyach-output-hook '()
+  "List of functions taking two arguments (the beginning and end
+  a region) which are called on text outputed to the buffer" )
 
-;;; Faces:
-
-(defgroup gyach-faces nil 
-  "Face for Gyach."
-  :group 'gyach)
-
-(defface gyach-plain-face '((t))
-  "Gyach message face."
-  :group 'gyach-faces)
-
-(defface gyach-action-face '((t (:bold t)))
-  "Gyach action face."
-  :group 'gyach-faces)
-
-(defface gyach-username-face '((t (:bold t)))
-  "Gyach username face."
-  :group 'gyach-faces)
+(defvar gyach-room-list '())
 
 ;;; Code:
+
+(defun gyach-room-list ()
+  gyach-room-list)
 
 (defun gyach-save () 
   "Save El-Gyach setting to file. Currently this includes
@@ -121,6 +117,14 @@
     (insert-file-contents (expand-file-name gyach-save-file))
     (goto-char (point-min))
     (setq gyach-ignorables (read (current-buffer)))))
+
+(defun gyach-list ()
+  "List current chatters."
+  (save-excursion
+    (pop-to-buffer "*gyach-messages*")
+    (erase-buffer)
+    (dolist (user (sort (gyach-room-list) 'string-lessp))
+      (insert (format "%s\n" user)))))
 
 (define-derived-mode gyach-mode comint-mode "gyach"
   (set (make-local-variable 'font-lock-keywords)
@@ -179,6 +183,9 @@ version of `comint-simple-send'"
 	      ;; load
 	      ((equal gyach-command 'load)
 	       (gyach-load))
+	      ;; list 
+	      ((equal gyach-command 'list)
+	       (gyach-list))
 	      ;; highlight
 	      ((equal gyach-command 'highlight)
 	       (add-to-list 'gyach-highlightables gyach-command-arg)
@@ -204,7 +211,7 @@ version of `comint-simple-send'"
       (funcall command-function proc argument))))
 
 ;;;###autoload 
-(defun gyach (&optional buffer)
+(defun elgyach (&optional buffer)
   (interactive
    (list (and current-prefix-arg 
 	      (read-buffer "Gyach buffer: " "*gyach*"))))
@@ -238,16 +245,20 @@ version of `comint-simple-send'"
 
 (defun gyach-preoutput-filter-functions (string)
   "Clean up text before insertion"
-  (cond ((string-match (concat "^\\(" gyach-username-regexp "\\)\\(:.*\\)") string)
+  (cond ((string-match (concat "^\\(" gyach-username-regexp "\\): \\(.*\\)") string)
 	 (let ((user (downcase (match-string 1 string)))
-	       (text (match-string 2 string)))
+	       (text (gyach-replace-usernames (match-string 2 string))))
 	   (if (member-ignore-case user gyach-ignorables)
 	       ""
-	     (format "%s%s" 
+	     (format "<%s> %s" 
 		     (if (member-ignore-case user gyach-highlightables)
-			 (propertize user 'font-lock-face 'font-lock-function-name-face)
-		       (propertize user 'font-lock-face 'font-lock-keyword-face))
-		     (propertize (gyach-unescape-newlines text) 'font-lock-face 'font-lock-type-face)))))
+			 (propertize user 'face 'gyach-username-face)
+		       (propertize user 'face 'gyach-username-face))
+		     (progn
+		       (setq text (gyach-unescape-newlines text))
+		       (if (equal user gyach-yahoo-username)
+			   (propertize text 'face 'gyach-input-face)
+			   (propertize text 'face 'gyach-default-face)))))))
 	((string-match (concat "^\\*\\ \\(" gyach-username-regexp "\\)\\(.*\\)") string)
 	 (let ((user (downcase (match-string 1 string)))
 	       (text (match-string 2 string)))
@@ -255,20 +266,27 @@ version of `comint-simple-send'"
 	       ""
 	     (format "* %s%s" 
 		     (if (member-ignore-case user gyach-highlightables)
-			 (propertize user 'font-lock-face 'font-lock-function-name-face)
-		       (propertize user 'font-lock-face 'font-lock-keyword-face))
-		     (propertize (gyach-unescape-newlines text) 'font-lock-face 'font-lock-variable-name-face)))))
+			 (propertize user 'face 'gyach-username-face)
+			 (propertize user 'face 'gyach-username-face))
+		     (propertize (gyach-unescape-newlines text) 'face 'gyach-action-face)))))
 	((string-match (concat "^\\(" gyach-username-regexp "\\) \\(enters\\|leaves\\) the room") string)
+	 (let ((user (downcase (match-string 1 string)))
+	       (event (match-string 2 string)))
+	   (cond ((equal event "enters")
+		  (add-to-list 'gyach-room-list user))
+		 ((equal event "leaves")
+		  (setq gyach-room-list (remove user gyach-room-list)))))
 	 (if (not gyach-suppress-enter-leave-messages)
-	     (propertize string 'font-lock-face 'font-lock-string-face)
-	   ""))
+	     (propertize 
+	      (concat "*** " (replace-regexp-in-string "\\\\n" "" string)) 
+	      'face 'gyach-event-face)
+	     ""))
 	(t 
 	 string)))
 
 (defun gyach-output-filter-functions (string)
-  (fill-region comint-last-output-start (point))
-  (when gyach-use-smiley 
-    (smiley-region comint-last-output-start (point))))
+  (dolist (h gyach-output-hook)
+    (funcall h comint-last-output-start (point))))
 
 (defun gyach-input-filter-functions (string)
   "Intercept gyach.el command overrides."
@@ -292,6 +310,10 @@ version of `comint-simple-send'"
 	 (setq gyach-dont-send t
 	       gyach-command 'load
 	       gyach-command-arg nil))
+	((string-match "^/list" string)
+	 (setq gyach-dont-send t
+	       gyach-command 'list
+	       gyach-command-arg nil))
 	((string-match (concat "^/highlight\\ +\\(" gyach-username-regexp "\\)") string)
 	 (setq gyach-dont-send t
 	       gyach-command 'highlight
@@ -301,7 +323,7 @@ version of `comint-simple-send'"
 	       gyach-command 'unhighlight
 	       gyach-command-arg (downcase (match-string 1 string))))
 	;; pass-through commands 
-	((string-match "^/\\(tell\\|think\\|quit|\\join\\)\\ +" string)
+	((string-match "^/\\(tell\\|think\\|quit\\|\\join\\)\\ +" string)
 	 (setq gyach-dont-send nil))
 	;; user-custom commands
 	((string-match "^/\\([a-zA-Z]+\\)\\ ?\\(.*\\)" string)
@@ -310,6 +332,20 @@ version of `comint-simple-send'"
 	       gyach-command-arg (cons (downcase (match-string 1 string)) (match-string 2 string))))
 	(t
 	  (setq gyach-dont-send nil))))
+
+
+(defun gyach-clean-username (username)
+  username)
+
+(defun gyach-replace-usernames (string)
+  (with-temp-buffer
+    (erase-buffer)
+    (insert string)
+    (goto-char (point-min))
+    (dolist (user (gyach-room-list))
+      (while (search-forward user  nil t)
+	(replace-match (propertize (gyach-clean-username user) 'face 'gyach-username-face) nil t)))
+    (buffer-string)))
 
 (provide 'gyach)
 
