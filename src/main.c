@@ -656,7 +656,7 @@ void chat_command( char *cmd ) {
 		} else {
 			cmd_exec( ptr, 0 );
 		}
-	} else if (ptr[0] == ':') {
+	} else if (ptr[0] == ':' && ptr[1] == ' ') {
 		ptr++;
 		sprintf( buf, "* %s %s\n", ymsg_sess->user, ptr);
 		ymsg9_emote(ymsg_sess, ptr);
