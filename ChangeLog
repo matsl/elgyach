@@ -1,3 +1,7 @@
+2004-02-03  Matthew Kennedy  <mkennedy@gentoo.org>
+
+	* src/: initial port to libyahoo2
+
 2003-08-09  Matthew Kennedy  <mkennedy@killr.ath.cx>
 
 	* src/yahoochat.c: removed send file code
