@@ -7,9 +7,23 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <glib.h>
+
 #include "misc.h"
 
-char * 
+/* Return the length of a NULL-terminated vector of strings  */
+gint
+strvlen(gchar **strv)
+{
+  gint count = 0;
+
+  for (; *strv != NULL; strv++)
+    count++;
+  
+  return count;
+}
+
+gchar * 
 get_local_addresses()
 {
   static char addresses[1024];

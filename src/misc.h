@@ -2,6 +2,9 @@
 #ifndef MISC_H
 #define MISC_H
 
-char *get_local_addresses();
+#include <glib.h>
+
+gint strvlen(gchar **strv);
+gchar *get_local_addresses();
 
 #endif

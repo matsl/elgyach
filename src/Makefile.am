@@ -7,6 +7,8 @@ elgyach_SOURCES = \
 	utils.c utils.h \
 	yahoo_util.c yahoo_util.h \
 	base64.c base64.h \
-	misc.c misc.h
+	misc.c misc.h \
+	commands.c commands.h \
+	globals.c globals.h
 
 

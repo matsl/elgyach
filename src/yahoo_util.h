@@ -67,13 +67,8 @@
 #define MAX(x,y) ((x)>(y)?(x):(y))
 #endif
 
-/* 
- * The following three functions return newly allocated memory.
- * You must free it yourself
- */
-char * y_string_append(char * str, char * append);
-char * y_str_to_utf8(const char * in);
-char * y_utf8_to_str(const char * in);
+gchar *y_str_to_utf8(const gchar * in);
+gchar *y_utf8_to_str(const gchar * in);
 
 #endif
 

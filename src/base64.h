@@ -39,9 +39,13 @@
 extern "C" {
 #endif
 
+#include <glib.h>
+
 int b64_encode(char *target, size_t tlen, const char *source, size_t slen);
 int b64_decode(char *target, size_t tlen, const char *source, size_t slen);
-char * b64_encode_string(const char *string);
+
+gchar *b64_encode_string(const gchar *string);
+gchar *b64_decode_string(const gchar *string);
 
 #define b64_length(len) ((len / 3 + 1) * 4)
 

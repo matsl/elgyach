@@ -167,19 +167,27 @@ int b64_encode(char *target, size_t tlen, const char *source, size_t slen)  {
 	return(outp-target);
 }
 
-/* 
- * Return "string" base64 encoded.  Caller must free result.
- */
-char *
-b64_encode_string(const char *string)
+gchar *
+b64_encode_string(const gchar *string)
 {
   size_t len = strlen(string);
   size_t b64_len = b64_length(len);
-  char *result = NULL;
-  
-  result = g_malloc0(b64_len + 1);
+  gchar *result = g_malloc0(b64_len + 1);
+
   if (result)
 	b64_encode(result, b64_len, string, len);
 
+  return result;
+}
+
+gchar *
+b64_decode_string(const gchar *string)
+{
+  size_t len = strlen(string);
+  gchar *result = g_malloc0(len + 1);
+  
+  if (result)
+	b64_decode(result, len, string, len);
+  
   return result;
 }
