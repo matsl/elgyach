@@ -19,332 +19,314 @@
  */
 
 #include <assert.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "yahoochat.h"
 #include "display.h"
 
+#define STREQ(a, b) (strcmp(a, b) == 0)
+
+static int display_comment(YMSG9_SESSION *);
+static int display_pm(YMSG9_SESSION *);
+static int display_exit(YMSG9_SESSION *);
+static int display_get_key(YMSG9_SESSION *);
+static int display_join(YMSG9_SESSION *);
+static int display_quit(YMSG9_SESSION *);
+static int display_cookie(YMSG9_SESSION *);
+static int display_online(YMSG9_SESSION *);
+static int display_notify(YMSG9_SESSION *);
+
 typedef struct {
   int packet_type;
-  int (*callee)(YMSG9_SESSION *session, const char *);
+  int (*callee)(YMSG9_SESSION *session);
 } display_pair_t;
-
-static int display_comment(YMSG9_SESSION *, const char *);
 
 static display_pair_t display_table[] = {
   {YMSG9_COMMENT, display_comment},
+  {YMSG9_PM, display_pm},
+  {YMSG9_PM_RECV, display_pm},
+  {YMSG9_EXIT, display_exit},
+  {YMSG9_GET_KEY, display_get_key},
+  {YMSG9_JOIN, display_join},
+  {YMSG9_LOGOUT, display_quit},
+  {YMSG9_COOKIE, display_cookie},
+  {YMSG9_ONLINE, display_online},
+  {YMSG9_NOTIFY, display_notify},
   {0, NULL}};
 
-static int
-display_comment(YMSG9_SESSION *session, char *fields[])
+static void
+zero_separators(char data[], int data_len)
 {
-  
+  int i;
+
+  for (i = 0; i < data_len - 1; i++)
+    if (data[i] == YMSG9_SEP[0] && data[i + 1] == YMSG9_SEP[1])
+      memset(data + i, 0, 2);
 }
 
-/*   case YMSG9_COMMENT:  */
-/*     /\* user comment/emote/thought *\/ */
-/*     strcpy( tmp, ymsg9_field( "109" )); */
-/*     strcpy( tmp2, ymsg9_field( "117" )); */
+typedef struct {
+  char *key, *value;
+} field_pair_t;
 
-/*     if ( ! strcmp( ymsg9_field( "124"), "1" )) { */
-/*       sprintf( buf, "%s%s%s%s: %s%s%s\n", */
-/* 	       ANSI_BOLDON, tmp, ANSI_ATTR_RESET, ANSI_BOLDOFF, */
-/* 	       ANSI_ATTR_RESET, tmp2, ANSI_ATTR_RESET ); */
-/*     } else { */
-/*       sprintf( buf, "* %s%s%s%s %s%s\n", */
-/* 	       ANSI_BOLDON, tmp, ANSI_ATTR_RESET, ANSI_BOLDOFF, */
-/* 	       tmp2, ANSI_ATTR_RESET ); */
-/*     } */
-/*     append_to_textbox( buf ); */
+#define MAX_FIELDS 100
 
-/*     break; */
+static field_pair_t packet_fields[MAX_FIELDS];
 
+static int
+parse_packet(char data[], int data_len)
+{
+  int field;
+  int i;
 
-
-int 
-display_packet(YMSG9_SESSION *session) {
-  
-  
-  
-
-
-
-
-
-char buf[BUF_LEN];  /* these are static so they aren't on the stack */
-  char tmp[2048];
-  char tmp2[2048];
-  char tmp3[2048];
-  char *ptr;
-  time_t time_now;
-
-  if ( ymsg_sess->pkt.size ) {
-    split( ymsg_sess->pkt.data, "\xC0\x80" );
-  } else {
-    strcpy( ymsg_fields[0], "__END__" );
-    strcpy( ymsg_fields[1], "__END__" );
-  }
-
-  strcpy( buf, "" );
-  strcpy( tmp, "" );
-  strcpy( tmp2, "" );
-  strcpy( tmp3, "" );
-
-  switch( ymsg_sess->pkt.type ) {
-  case YMSG9_GET_KEY:
-    strcpy( tmp, ymsg9_field( "94" ));
-    ymsg9_login( ymsg_sess, tmp );
-
-    sprintf( buf, "*** Logging in to chat server...\n" );
-    append_to_textbox( buf );
-
-    /* reset cookies */
-    ymsg_sess->cookie[0] = '\0';
-    break;
-
-  case YMSG9_COOKIE:
-    /* set online if we got the right cookie packet */
-    if ( strcmp( ymsg9_field( "3" ), "" )) {
-      sprintf( buf, "*** Setting status to Online...\n" );
-      append_to_textbox( buf );
-
-      ymsg9_online( ymsg_sess );
+  zero_separators(data, data_len);
+  memset(packet_fields, 0, sizeof(packet_fields));
+  for (i = 0, field = 0; data[i] != '\0' && field < MAX_FIELDS; field++)
+    {
+      packet_fields[field].key = data + i;
+      i += strlen(data + i) + 2;
+      packet_fields[field].value = data + i;
+      i += strlen(data + i) + 2;
     }
 
-    /* store the cookies */
-    if ( strcmp( ymsg9_field( "59" ), "" )) {
-      if ( ymsg_sess->cookie[0] ) {
-	strcat( ymsg_sess->cookie, ";" );
-	strcat( ymsg_sess->cookie, ymsg9_field_p( "59" ));
-      } else {
-	strcpy( ymsg_sess->cookie, ymsg9_field_p( "59" ));
-      }
-      ptr = ymsg_sess->cookie;
-      ptr = strchr( ptr, '	' ); /* a tab */
-      while( ptr ) {
-	*ptr = '=';
-	ptr = strchr( ptr, '|' );
-
-	if ( ptr ) {
-	  *ptr = ';';
-	  ptr = strchr( ptr, '	' ); /* a tab */
-	}
-      }
-    }
-    break;
-
-  case YMSG9_ONLINE:
-    ymsg9_join( ymsg_sess );
-    break;
-
-  case YMSG9_JOIN:
-    /* fixme, need to verify what exactly constitutes a join pkt */
-    strcpy( tmp, ymsg9_field( "126" ));     /* dunno what */
-    strcpy( tmp2, ymsg9_field( "104" ));    /* room name */
-    if (( strcmp( tmp, "" )) ||
-	( ! strcmp( tmp2, "" ))) {
-      /* I joined the room */
-      if ( strcmp( tmp2, "" )) {
-	strcpy( ymsg_sess->room, tmp2 );
-
-	sprintf( buf, "You are now in %s%s%s\n",
-		 ANSI_COLOR_BLUE, tmp2, ANSI_ATTR_RESET );
-	if ( strcmp( ymsg9_field( "105" ), "" )) {
-	  strcat( buf, ANSI_COLOR_CYAN );
-	  strcat( buf, ymsg9_field( "105" ));
-	  strcat( buf, ANSI_ATTR_RESET );
-	  strcat( buf, "\n" );
-	}
-      }
-
-      strcpy( tmp, ymsg9_field( "109" ));
-
-      snprintf(buf, BUF_LEN, "init room %s\n", tmp);
-      append_to_textbox(buf);
-
-      /* 					make_tokens(tmp, max_words, &nwords, words, ","); */
-      /* 					for (i = 0; i < nwords; i++) */
-      /* 					  { */
-      /* 					    sprintf(buf, "%s enters the room\n", words[i]); */
-      /* 					    append_to_textbox( buf ); */
-      /* 					  } */
-
-    } else if (( ! strcmp( ymsg9_field( "108" ), "1" )) &&
-	       ( strcasecmp( ymsg9_field( "109" ), ymsg_sess->user ))) {
-      /* someone else joined the room while I'm in there */
-      strcpy(tmp, ymsg9_field( "109" ));
-      sprintf(buf, "%s enters the room\n", tmp);
-      append_to_textbox(buf);
-    }
-    break;
-
-  case YMSG9_EXIT:
-    if ( strcasecmp( ymsg_sess->user, ymsg9_field( "109"))) {
-      /* someone else left */
-      strcpy( tmp, ymsg9_field( "109" ));
-      sprintf(buf, "%s leaves the room\n", tmp);
-      append_to_textbox( buf );
-    } else {
-      /* packet that shows up when I leave */
-    }
-    break;
-
-  case YMSG9_PM:
-  case YMSG9_PM_RECV:
-    strcpy( tmp, ymsg9_field( "4" ));
-    strcpy( tmp2, ymsg9_field( "14" ));
-
-    /* don't think we should get any of these, but just in cas */
-    if ( ! strcmp( ymsg9_field( "49" ), "TYPING" )) {
-      return;
-    }
-
-    sprintf(buf, "%s <private to %s> %s\n", tmp, ymsg_sess->user, tmp2);
-    append_to_textbox(buf);
-    break;
-
-  case YMSG9_NOTIFY:
-    strcpy( tmp, ymsg9_field( "4" ));
-    break;
-
-  case YMSG9_INVITE: 
-    strcpy( tmp, ymsg9_field( "119" ));
-    strcpy( tmp2, ymsg9_field( "104" ));
-
-    if ( ! strcmp( tmp, "" )) {
-      sprintf( buf, "%sUser has been invited to %s%s\n",
-	       ANSI_COLOR_PURPLE, ymsg_sess->room, ANSI_ATTR_RESET );
-      append_to_textbox( buf );
-      return;
-    }
-			
-    sprintf( buf, "You have been invited to (%s) by %s\n", tmp2, tmp );
-    append_to_textbox( buf );
-    break;
-
-  case YMSG9_LOGOUT:
-    close( ymsg_sess->sock );
-    ymsg_sess->sock = -1;
-
-    time_now = time(NULL);
-
-    /* show user that we aren't logged in anymore */
-    sprintf( buf, "%sDisconnected from Chat!%s\n",
-	     ANSI_COLOR_RED, ANSI_ATTR_RESET );
-    append_to_textbox( buf );
-
-    break;
-  }
-
+  return field;
 }
 
+static char *
+get_value_for_key(const char *key)
+{
+  int i;
+
+  for (i = 0; i < MAX_FIELDS; i++)
+    {
+      if (packet_fields[i].key == NULL)
+	break;
+      if (strcmp(packet_fields[i].key, key) == 0)
+	return packet_fields[i].value;
+    }
+
+  return NULL;
+}
 
 
-/* function related to data arriving from the network */
+#define MAX_OUTPUT_LENGTH MAX_DATA_LENGTH
 
-#define YMSG_FIELDS 300
-#define YMSG_FIELD_LENGTH 1024
+static char output_buffer[MAX_OUTPUT_LENGTH + 1];
 
-#define YMSG_FIELD_END "__END__"
+static int
+print_output(void)
+{
+  fputs(output_buffer, stdout);
+  fputc(0, stdout);
 
-static char ymsg_fields[YMSG_FIELDS][YMSG_FIELD_LENGTH];
+  return 1;
+}
+
+static int 
+display_comment(YMSG9_SESSION *session)
+{
+  char *user = get_value_for_key("109");
+  char *comment = get_value_for_key("117");
+  char *type = get_value_for_key("124");
+  int count;
+
+  if (strcmp(type, "1") == 0)
+    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[SAYS %s]%s", user, comment);
+  else if (strcmp(type, "2") == 0)
+    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[DOES %s]%s", user, comment);
+  else 
+    {
+      fprintf(stderr, "Warning: Unknown field 124 value %s in comment packet\n", type);
+      return 0;
+    }
+  output_buffer[count] = '\0';
+  print_output();
+  return 1;
+}
+
+static int
+display_pm(YMSG9_SESSION *session)
+{
+  char *user = get_value_for_key("4");
+  char *comment = get_value_for_key("14");
+  int count;
+
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[PM %s]%s", user, comment);
+  output_buffer[count] = '\0';
+  print_output();
+
+  return 1;
+}
+
+/*   case YMSG9_JOIN: */
+/*     /\* fixme, need to verify what exactly constitutes a join pkt *\/ */
+/*     strcpy( tmp, ymsg9_field( "126" ));     /\* dunno what *\/ */
+/*     strcpy( tmp2, ymsg9_field( "104" ));    /\* room name *\/ */
+/*     if (( strcmp( tmp, "" )) || */
+/* 	( ! strcmp( tmp2, "" ))) { */
+/*       /\* I joined the room *\/ */
+/*       if ( strcmp( tmp2, "" )) { */
+/* 	strcpy( ymsg_sess->room, tmp2 ); */
+
+/* 	sprintf( buf, "You are now in %s%s%s\n", */
+/* 		 ANSI_COLOR_BLUE, tmp2, ANSI_ATTR_RESET ); */
+/* 	if ( strcmp( ymsg9_field( "105" ), "" )) { */
+/* 	  strcat( buf, ANSI_COLOR_CYAN ); */
+/* 	  strcat( buf, ymsg9_field( "105" )); */
+/* 	  strcat( buf, ANSI_ATTR_RESET ); */
+/* 	  strcat( buf, "\n" ); */
+/* 	} */
+/*       } */
+
+/*       strcpy( tmp, ymsg9_field( "109" )); */
+
+/*       snprintf(buf, BUF_LEN, "init room %s\n", tmp); */
+/*       append_to_textbox(buf); */
+
+/*       /\* 					make_tokens(tmp, max_words, &nwords, words, ","); *\/ */
+/*       /\* 					for (i = 0; i < nwords; i++) *\/ */
+/*       /\* 					  { *\/ */
+/*       /\* 					    sprintf(buf, "%s enters the room\n", words[i]); *\/ */
+/*       /\* 					    append_to_textbox( buf ); *\/ */
+/*       /\* 					  } *\/ */
+
+/*     } else if (( ! strcmp( ymsg9_field( "108" ), "1" )) && */
+/* 	       ( strcasecmp( ymsg9_field( "109" ), ymsg_sess->user ))) { */
+/*       /\* someone else joined the room while I'm in there *\/ */
+/*       strcpy(tmp, ymsg9_field( "109" )); */
+/*       sprintf(buf, "%s enters the room\n", tmp); */
+/*       append_to_textbox(buf); */
+/*     } */
+/*     break; */
+
+static int
+display_join(YMSG9_SESSION *session)
+{
+  int count;
+
+  if (strcmp(get_value_for_key("109"), "1"))
+    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ENTER %s]", get_value_for_key("109"));
+  output_buffer[count] = '\0';
+  print_output();
+
+  return 1;
+}
+
+static int
+display_exit(YMSG9_SESSION *session)
+{
+  char *user = get_value_for_key("109");
+  int count;
+
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[EXIT %s]", user);
+  output_buffer[count] = '\0';
+  print_output();
+  return 1;
+}
+
+static int
+display_get_key(YMSG9_SESSION *session)
+{
+  char *user = get_value_for_key("94");
+  int count;
+
+  ymsg9_login(session, user);
+  session->cookie[0] = '\0'; /* reset cookies */
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[LOGIN %s %d %s", session->host, session->port, user);
+  output_buffer[count] = '\0';
+  print_output();
+
+  return 1;
+}
+
+static int
+display_quit(YMSG9_SESSION *session) 
+{
+  int count;
+
+  close(session->sock);
+  session->sock = -1;
+  session->quit = 1;
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[QUIT]");
+  output_buffer[count] = '\0';
+  print_output();
+
+  return 1;
+}
+
+static int
+display_online(YMSG9_SESSION *session)
+{
+  ymsg9_join(session);
+  return 1;
+}
+
+static int
+display_notify(YMSG9_SESSION *session)
+{
+  return 1;
+}
+
+static int
+display_cookie(YMSG9_SESSION *session)
+{
+  int count;
+  char *ptr;
+
+  if (! STREQ(get_value_for_key("3"), ""))
+    {
+      count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ONLINE]");
+      output_buffer[count] = '\0';
+      print_output();
+      ymsg9_online(session);
+    }
+  if (! STREQ(get_value_for_key("59"), ""))
+    {
+      if (session->cookie[0]) 
+	{
+	  /* append to what we already have */
+	  count = strlen(session->cookie);
+	  ptr = session->cookie + count;
+	  count = snprintf(ptr, YMSG9_COOKIE_SIZE - count, ";%s", get_value_for_key("59"));
+	  ptr[count] = '\0';
+	}
+      else 
+	{
+	  strncpy(session->cookie, get_value_for_key("59"), YMSG9_COOKIE_SIZE);
+	  session->cookie[YMSG9_COOKIE_SIZE] = '\0';
+	}
+      for (ptr = strchr(session->cookie, '\t'); ptr != NULL; )
+	{
+	  *ptr = '=';
+	  ptr = strchr(ptr, '|');
+	  if (ptr)
+	    {
+	      *ptr = ';';
+	      ptr = strchr(ptr, '\t');
+	    }
+	}
+    }
+  
+  return 1;
+}
 
 int 
-split(char *str, char *connector)
+display_packet(YMSG9_SESSION *session) 
 {
-  char *last, *orig, *ptr;
-  int result;
-  
-  size_t connector_len;
-  size_t tmp_str_len;
-  char *tmp_str;
-  
-  tmp_str_len = strlen(str) + 1;
-  tmp_str = malloc(tmp_str_len);
-  if (tmp_str == NULL)
-    goto error_malloc;
-  strcpy(tmp_str, str); /* guarded */
+  display_pair_t *ptr;
+  int ret;
 
-  str = tmp_str;
-  last = orig = str;
-  
-  for (result = 0, connector_len = strlen(connector);
-       (ptr = strstr(str, connector)) && result < YMSG_FIELDS; 
-       result++) 
-    {
-      *ptr = '\0';
-      strncpy(ymsg_fields[result], last, YMSG_FIELD_LENGTH);
-      ymsg_fields[result][YMSG_FIELD_LENGTH - 1] = '\0';
-      str = last = ptr + connector_len;
-    }
-
-  if (last != orig) 
-    {
-      strncpy(ymsg_fields[result], last, YMSG_FIELD_LENGTH);
-      ymsg_fields[result][YMSG_FIELD_LENGTH - 1] = '\0';
-    } 
-  else
-    result--;
-
-  
-  if (result > 0 && result + 1 < YMSG_FIELDS)
-    {
-      /*       fprintf(stderr, ">>>%d<<<>>%s<<\n", result, tmp_str); */
-      assert(result > 0 && result + 1 < YMSG_FIELDS);
-    }
-  strncpy(ymsg_fields[result], "__END__", YMSG_FIELD_LENGTH);
-  strncpy(ymsg_fields[result + 1], "__END__", YMSG_FIELD_LENGTH);
-  ymsg_fields[result][YMSG_FIELD_LENGTH - 1] = '\0';
-  ymsg_fields[result + 1][YMSG_FIELD_LENGTH - 1] = '\0';
-
-  free(tmp_str);
-  return result + 1;
-
- error_malloc:
-  return -2;
-}
-
-#define YMSG9_RESULT_LENGTH 2048
-
-char *
-ymsg9_field_p(char *key) 
-{
-  int i = 0;
-  static char result[YMSG9_RESULT_LENGTH];
-  size_t result_total;
-
-  result_total = 0;
-  result[0] = '\0';
-  while (strcmp(ymsg_fields[i], "__END__")) 
-    {
-      if (!strcmp( ymsg_fields[i], key)) {
-	if (result[0])
-	  {
-	    strcat(result, "|"); 
-	  }
-	strcat(result, ymsg_fields[i + 1]);
+  for (ptr = display_table; ptr != NULL; ptr++)
+    if (ptr->packet_type == session->pkt.type)
+      {
+	parse_packet(session->pkt.data, session->pkt.size);
+	ret = (ptr->callee)(session);
+	break;
       }
-      i += 2;
-    }
+  if (ptr == NULL)
+    return 0;
 
-  return result;
-}
-
-char *ymsg9_field( char *key ) {
-  int i = 0;
-  static char result[2048];
-
-  result[0] = '\0';
-  while( strcmp( ymsg_fields[i], "__END__" )) {
-    if ( ! strcmp( ymsg_fields[i], key )) {
-      if ( result[0] ) {
-	strcat( result, "," );
-      }
-      strcat( result, ymsg_fields[i+1] );
-    }
-    i += 2;
-  }
-  return( result );
-}
-
+  return ret;
+}  

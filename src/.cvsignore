@@ -1,1 +1,5 @@
-
+.deps
+Makefile
+Makefile.in
+cscope.*
+TAGS

@@ -22,21 +22,9 @@
  * mkennedy@gentoo.org
  */
 
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/types.h>
-#include <sys/utsname.h>
-#include <sys/wait.h>
-#include <sys/wait.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <ctype.h>
+
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <unistd.h>
 #include <time.h>
 #include <stdio.h>
@@ -52,14 +40,12 @@
 #include "output.h"
 #include "config.h"
 #include "input.h"
-
-YMSG9_SESSION ymsg_session, *ymsg_sess = &ymsg_session;
-int lf_from_input = 0;
-
+#include "display.h"
 
 int
 main(int argc, char *argv[]) 
 {
+  YMSG9_SESSION ymsg_session, *ymsg_sess = &ymsg_session;
   time_t ping_time;
   int mode, ret;
 
@@ -115,7 +101,7 @@ main(int argc, char *argv[])
       else if (ret > 0) 
         {
           if (FD_ISSET(ymsg_sess->sock, &set) &&  ymsg9_recv_data(ymsg_sess) != -1) 
-            show_yahoo_packet();
+            display_packet(ymsg_sess);
           
           if (FD_ISSET(fileno(stdin), &set)) 
             {
