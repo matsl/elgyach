@@ -1,4 +1,4 @@
-\input texinfo   @c -*-texinfo-*-
+\input texinfo   @c -*-texinfo-*- -*-flyspell-mode-*-
 @c %**start of header
 @setfilename elgyach.info
 @settitle ElGyach Manual 0.1.1
@@ -33,14 +33,17 @@ Copyright @copyright{} 2003 Free Software Foundation, Inc.
 * Installation::                
 * Customization::               
 * Getting Started::             
+* Usage Tips::                  
+* Adding New Commands::         
+* Command List::                
 * Index::                       Complete index.
+
+
 
 @end menu
 
 @node Installation
 @chapter Installation
-
-@cindex chapter, first
 
 Installation is covered in the @file{INSTALL} file.  If you did not
 override the configure script's  @command{--site-list} parameter,
@@ -67,8 +70,6 @@ your @file{~/.emacs}:
 @node Customization
 @chapter Customization
      
-@cindex chapter, first
-   
 Normally, a user will customize ElGyach by setting the
 @code{gyach-yahoo-username} and @code{gyach-yahoo-password} variables
 in their @file{~/.emacs}.  The following is an example:
@@ -91,12 +92,83 @@ you can take advantage of the @code{gyach-mode-hook} variable:
 @node Getting Started
 @chapter Getting Started
 
-@cindex chapter, first
-
 ElGyach is started with @key{M-x gyach RET}.  If you are starting a
 second ElGyach (you can have as many running simultaneously as you
 like), you can give the prefix-argument which will prompt for the
 name of the buffer: @key{C-u M-x gyach RET}.
+
+Note: It is NOT possible to log into more than one room under the
+same username.  This is a limitation of Yahoo Chat (not ElGyach).
+
+@node Usage Tips
+@chapter Usage Tips
+
+This chapter is not necessarilly aimed at the experienced user, but
+provides more of an introduction to newer users.
+
+Users often wonder ``Where is the tab-completion I'm so used to in
+<insert other chat client here>?''.  At the moment, ElGyach does not
+have tab-completion, but it does have something more general and
+arguably, more powerful known as dynamic expansion.  If you wish to
+know more, look at the documentaion for the interactive function
+@code{dabbrev-expand}.  If you're looking for a quick start think of
+your ``tab-completion'' key as @key{M-/}.
+
+Since ElGyach extends Emacs, the user also benifits from Emacs
+features.  For example, spell checking the word at point is @key{M-$}.
+You can insert the output of a shell command with @key{C-u M-!} or
+similarly, insert evaluated Emacs Lisp with @key{C-u M-:}.  Prefer vi
+keybindings? Try @command{M-x viper}.
+
+The possibilities are limitless.  
+
+The next chapter describes how you can extend ElGyach by building
+custom chat commands.
+
+@node Adding New Commands
+@chapter Adding New Commands
+
+If you are somewhat familiar with Emacs Lisp, you may find this
+chapter useful. 
+
+ElGyach commands look like @command{/name}.  ElGyach has a few built
+in commands such as @command{/version}, @command{/ignore} and
+@command{/highlight}, however ElGyach provides a mechanism whereby if
+you define a function with a name of the form
+@code{gyach-custom-NAME}, then typing @command{/name} in an
+ElGyach buffer will cause @command{gyach-custom-NAME} to be called
+with a single argument containing the text after @command{/name}.
+
+Here's an example taken from the ElGyach source base:
+
+@lisp
+(defun gyach-custom-YOW (proc argument)
+  "Chatters need Zippy wisdom."
+  (let ((quote (yow)))
+    (setq quote (replace-regexp-in-string "\n" " " quote))
+    (comint-send-string proc (format "%s\n\n" quote))))
+@end lisp
+
+@node Command List
+@chapter Command List
+
+@table @command
+@item /version
+print version of ElGyach
+
+@item /ignore user
+ignore user
+
+@item /unignore user
+unignore user
+
+@item /highlight user
+highlight posts from a specific user
+
+@item /unhighlight user
+unhighlight post from a specific user
+
+@end table
 
 @cindex index entry, another
      
