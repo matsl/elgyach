@@ -1,1 +1,1 @@
-SUBDIRS=src elisp
+SUBDIRS=src elisp doc

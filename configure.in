@@ -11,4 +11,5 @@ AC_OUTPUT([
 Makefile
 elisp/Makefile
 src/Makefile
+doc/Makefile
 ])
