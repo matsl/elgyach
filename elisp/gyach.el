@@ -26,6 +26,9 @@
 
 (require 'gyach-faces)
 (require 'gyach-button)
+(require 'gyach-state)
+(require 'gyach-version)
+
 (require 'comint)
 
 (defgroup gyach nil
@@ -69,9 +72,10 @@
   :group 'gyach
   :type 'boolean)
 
-
-(defvar gyach-program-arguments '()
-  "List of other arguments to pass to the gyach sub-process.")
+(defcustom gyach-program-arguments '()
+  "List of other arguments to pass to the gyach sub-process."
+  :group
+  :type 'string)
 
 (defvar gyach-mode-font-lock-keywords
   (list 
@@ -80,48 +84,47 @@
 
 (defvar gyach-username-regexp "[a-zA-Z0-9_.@\\-]+")
 
-(defconst gyach-version "ElGyach 0.1.1, the GNU Emacs Lisp interface to Yahoo! Chat http://savannah.nongnu.org/projects/elgyach/")
-
-(defvar gyach-ignorables '()
-  "List of fools to ignore")
+(defconst gyach-publicity-string
+  (concat "ElGyach " gyach-version 
+	  ", the GNU Emacs Lisp interface to Yahoo! Chat "
+	  "http://savannah.nongnu.org/projects/elgyach/")
+  "Client advertisement")
 
 (defvar gyach-highlightables '()
   "List of fools to highlight")
 
-(defvar gyach-mode-hook '()) 
+(defgroup gyach-hooks nil
+  "Hooks for customization in ElGyach")
 
-(defvar gyach-output-hook '()
-  "List of functions taking two arguments (the beginning and end
-  a region) which are called on text outputed to the buffer" )
+(defcustom gyach-mode-hook '()
+  "List of functions to call after `gyach-mode' is called."
+  :group 'gyach-hooks
+  :type 'hook)
+
+(defcustom gyach-output-hook '()
+  "List of functions taking two arguments numeric arguments.
+`gyach-output-hook' is a set of functions to call on text after
+it is sent to the buffer.  Each function takes two arguments: the
+beginning and end the region of text"
+  :group 'gyach-hooks
+  :type 'hook)
+
+(defcustom gyach-preoutput-hook '()
+  "List of functions taking a single string argument.
+`gyach-preoutput-hook' is a set of functions which are called on
+the raw text as it comes in from the sub-process.  Users of this
+hook should take care to preserve the initial part of the
+text (everything before the text including the username and
+action character) and also the form of enter/leave messages."
+  :group 'gyach-hooks
+  :type 'hook)
 
 (defvar gyach-room-list '())
-
-(defvar gyach-last-url nil)
-
-(defvar gyach-url-list '())
 
 ;;; Code:
 
 (defun gyach-room-list ()
   gyach-room-list)
-
-(defun gyach-save () 
-  "Save El-Gyach setting to file. Currently this includes
-`gyach-ignorables'.  The file to use is given by the variable
-`gyach-save-file'."
-  (with-temp-buffer
-    (erase-buffer)
-    (print gyach-ignorables (current-buffer))
-    (write-file (expand-file-name gyach-save-file))))
-
-(defun gyach-load ()
-  "Load El-Gyach settings from file. Currently this includes
-`gyach-ignorables'. The file to use is given by the variable
-`gyach-save-file'."
-  (with-temp-buffer
-    (insert-file-contents (expand-file-name gyach-save-file))
-    (goto-char (point-min))
-    (setq gyach-ignorables (read (current-buffer)))))
 
 (defun gyach-list ()
   "List current chatters."
@@ -173,7 +176,8 @@ version of `comint-simple-send'"
       (progn
 	(cond ((equal gyach-command 'version)
 	       (setq gyach-dont-send nil)
-	       (gyach-simple-send proc (concat ": is conversing with you via " gyach-version)))
+	       (gyach-simple-send proc (concat ": is conversing with you via " 
+					       gyach-publicity-string)))
 	      ;; ignore
 	      ((equal gyach-command 'ignore)
 	       (add-to-list 'gyach-ignorables gyach-command-arg)
@@ -250,9 +254,8 @@ version of `comint-simple-send'"
 
 (defun gyach-preoutput-filter-functions (string)
   "Clean up text before insertion"
-  ;; look for URLs
-  (when (not (null (string-match gyach-button-url-regexp string)))
-    (add-to-list 'gyach-url-list (replace-regexp-in-string "\\\\n" "" (match-string 0 string))))
+  (dolist (h gyach-preoutput-hook)
+    (setq string (funcall h string)))
   ;; process kinds of output from sub-process
   (cond ((string-match (concat "^\\(" gyach-username-regexp "\\): \\(.*\\)") string)
 	 (let ((user (downcase (match-string 1 string)))
@@ -366,11 +369,8 @@ version of `comint-simple-send'"
 	(replace-match (propertize (gyach-clean-username user) 'face username-face) nil t)))
     (buffer-string)))
 
-(defun gyach-url-list ()
-  gyach-url-list)
 
-(defun gyach-last-url ()
-  (car (gyach-url-list)))
+(add-to-list 'gyach-preoutput-hook 'gyach-preoutput-url-sniff)
 
 (provide 'gyach)
 
