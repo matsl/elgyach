@@ -41,7 +41,22 @@
     (add-to-list 'gyach-url-list 
 		 (replace-regexp-in-string "\\\\n" "" (match-string 0 string))))      
   string)
-  
+
+(defun gyach-custom-OPENURL (proc argument)
+  "Open the last URL using `browse-url-browser-function'.
+If a numeric argument is give, eg. /openurl n, then the n-th last
+URL is opened instead."
+  (when (string-match "\\([0-9]+\\)?" argument)
+    (let ((url-n)
+	  (url)
+	  (arg (match-string 1 argument)))
+      (if (null arg)
+	  (setq url-n 0)
+	  (setq url-n (- (string-to-number arg) 1)))
+      (setq url (car (nthcdr url-n (gyach-url-list))))
+      (if (null url)
+	  (message "No such URL available.")
+	  (browse-url url)))))
 
 (provide 'gyach-url)
 

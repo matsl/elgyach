@@ -89,8 +89,6 @@
 (defun gyach-output-fill (start end)
   (fill-region start end))
   
-(add-to-list 'gyach-output-hook
-	     'gyach-output-fill)
 
 ;; if you have Oort(?) Gnus installed, try the following:
 

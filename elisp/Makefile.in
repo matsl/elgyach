@@ -104,18 +104,25 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-lisp_LISP = gyach.el gyach-extra.el
-DIST_SOURCES = gyach.el gyach-extra.el
+lisp_LISP = gyach.el gyach-extra.el gyach-button.el gyach-faces.el gyach-url.el \
+	gyach-state.el gyach-version.el 
+
+DIST_SOURCES = $(lisp_LISP) gyach-version.el.in
+EXTRA_DIST = gyach-version.el.in
+BUILT_SOURCES = gyach-version.el
+CLEAN_FILES = gyach-version.el
 subdir = elisp
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 LISP = $(lisp_LISP)
 
-ELCFILES = gyach-extra.elc gyach.elc
+ELCFILES = gyach-button.elc gyach-extra.elc gyach-faces.elc \
+	gyach-state.elc gyach-url.elc gyach-version.elc gyach.elc
 elisp_comp = $(top_srcdir)/elisp-comp
 DIST_COMMON = Makefile.am Makefile.in
-all: all-am
+all: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
 .SUFFIXES: .el .elc
@@ -199,7 +206,8 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-check: check-am
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LISP) $(ELCFILES)
 
 installdirs:
@@ -229,6 +237,7 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 clean: clean-am
 
 clean-am: clean-generic clean-lisp mostlyclean-am
@@ -282,6 +291,9 @@ uninstall-am: uninstall-info-am uninstall-lispLISP
 	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am uninstall \
 	uninstall-am uninstall-info-am uninstall-lispLISP
 
+
+gyach-version.el: Makefile
+	sed -e "s/VERSION/$(VERSION)/g" <$@.in >$@
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

@@ -60,6 +60,8 @@ int show_colors = 0;
 int no_black = 0;
 int lf_from_input = 0;
 
+int join_state = 0;
+
 #define GYACH_URL "http://www4.infi.net/~cpinkham/gyach/"
 
 
@@ -244,21 +246,21 @@ void show_yahoo_packet() {
 				}
 
 				/* yahoo buddy list */
-				if ( strcmp( ymsg9_field( "87" ), "" )) {
-					sprintf( buf,
-						"%s%sBuddies%s: %s\n",
-						ANSI_BOLDON, ANSI_COLOR_BLUE, ANSI_ATTR_RESET,
-						ymsg9_field( "87" ));
-					append_to_textbox( buf );
-				}
+/* 				if ( strcmp( ymsg9_field( "87" ), "" )) { */
+/* 					sprintf( buf, */
+/* 						"%s%sBuddies%s: %s\n", */
+/* 						ANSI_BOLDON, ANSI_COLOR_BLUE, ANSI_ATTR_RESET, */
+/* 						ymsg9_field( "87" )); */
+/* 					append_to_textbox( buf ); */
+/* 				} */
 
 				/* yahoo ignore list */
-				if ( strcmp( ymsg9_field( "88" ), "" )) {
+/* 				if ( strcmp( ymsg9_field( "88" ), "" )) { */
 /* 					sprintf( buf, "%s%sYahoo Ignore List%s: %s\n", */
 /* 						ANSI_BOLDON, ANSI_COLOR_CYAN, ANSI_ATTR_RESET, */
 /* 						ymsg9_field( "88" )); */
 /* 					append_to_textbox( buf ); */
-				}
+/* 				} */
 				break;
 
 		case YMSG9_ONLINE:
@@ -266,10 +268,10 @@ void show_yahoo_packet() {
 				break;
 
 		case YMSG9_MAIL:
-				sprintf( buf, "Gyach - You have %s%s%s email(s).  "
-						"http://mail.yahoo.com\n",
-					ANSI_COLOR_RED, ymsg9_field( "9" ), ANSI_ATTR_RESET );
-				append_to_textbox( buf );
+/* 				sprintf( buf, "Gyach - You have %s%s%s email(s).  " */
+/* 						"http://mail.yahoo.com\n", */
+/* 					ANSI_COLOR_RED, ymsg9_field( "9" ), ANSI_ATTR_RESET ); */
+/* 				append_to_textbox( buf ); */
 				break;
 
 		case YMSG9_COMMENT: 
@@ -311,12 +313,16 @@ void show_yahoo_packet() {
 
 					strcpy( tmp, ymsg9_field( "109" ));
 
-					make_tokens(tmp, max_words, &nwords, words, ",");
-					for (i = 0; i < nwords; i++)
-					  {
-					    sprintf(buf, "%s enters the room\n", words[i]);
-					    append_to_textbox( buf );
-					  }
+					/* avoid sending this more than once */
+					if (join_state == 0) {
+					  make_tokens(tmp, max_words, &nwords, words, ",");
+					  for (i = 0; i < nwords; i++)
+					    {
+					      sprintf(buf, "%s enters the room\n", words[i]);
+					      append_to_textbox( buf );
+					    }
+					  join_state = 1;
+					}
 
 				} else if (( ! strcmp( ymsg9_field( "108" ), "1" )) &&
 					( strcasecmp( ymsg9_field( "109" ), ymsg_sess->user ))) {
@@ -356,47 +362,47 @@ void show_yahoo_packet() {
 				break;
 
 		case YMSG9_BUDDY_ON:
-				if ( ! strcmp( ymsg9_field( "7" ), "" )) {
-					return;
-				}
+/* 				if ( ! strcmp( ymsg9_field( "7" ), "" )) { */
+/* 					return; */
+/* 				} */
 
-				if ( strcmp( ymsg9_field( "8" ), "" )) {
+/* 				if ( strcmp( ymsg9_field( "8" ), "" )) { */
 					/* initial buddy list of people online */
-					sprintf( buf, "Friends Online: %s\n", ymsg9_field( "7"));
-					append_to_textbox( buf );
-					return;
-				}
+/* 					sprintf( buf, "Friends Online: %s\n", ymsg9_field( "7")); */
+/* 					append_to_textbox( buf ); */
+/* 					return; */
+/* 				} */
 			
-				strcpy( tmp, ymsg9_field( "7" ));
+/* 				strcpy( tmp, ymsg9_field( "7" )); */
 
-				if ( ! strcasecmp( tmp, ymsg_sess->user )) {
-					return;
-				}
+/* 				if ( ! strcasecmp( tmp, ymsg_sess->user )) { */
+/* 					return; */
+/* 				} */
 
-				sprintf( buf, "%sBuddy:%s %s%s%s has logged ON.\n",
-					ANSI_COLOR_BLUE, ANSI_ATTR_RESET, ANSI_COLOR_RED,
-					tmp, ANSI_ATTR_RESET );
-				append_to_textbox( buf );
+/* 				sprintf( buf, "%sBuddy:%s %s%s%s has logged ON.\n", */
+/* 					ANSI_COLOR_BLUE, ANSI_ATTR_RESET, ANSI_COLOR_RED, */
+/* 					tmp, ANSI_ATTR_RESET ); */
+/* 				append_to_textbox( buf ); */
 				break;
 
 		case YMSG9_BUDDY_OFF:
-				if ( ! ymsg_sess->pkt.size ) {
-					ymsg_sess->pkt.type = YMSG9_LOGOUT;
-					show_yahoo_packet();
-				}
-				if ( ! strcmp( ymsg9_field( "7" ), "" )) {
-					return;
-				}
-				strcpy( tmp, ymsg9_field( "7"));
+/* 				if ( ! ymsg_sess->pkt.size ) { */
+/* 					ymsg_sess->pkt.type = YMSG9_LOGOUT; */
+/* 					show_yahoo_packet(); */
+/* 				} */
+/* 				if ( ! strcmp( ymsg9_field( "7" ), "" )) { */
+/* 					return; */
+/* 				} */
+/* 				strcpy( tmp, ymsg9_field( "7")); */
 
-				if ( ! strcasecmp( tmp, ymsg_sess->user )) {
-					return;
-				}
+/* 				if ( ! strcasecmp( tmp, ymsg_sess->user )) { */
+/* 					return; */
+/* 				} */
 
-				sprintf( buf, "%sBuddy:%s %s%s%s has logged OFF.\n",
-					ANSI_COLOR_BLUE, ANSI_ATTR_RESET, ANSI_COLOR_RED,
-					tmp, ANSI_ATTR_RESET );
-				append_to_textbox( buf );
+/* 				sprintf( buf, "%sBuddy:%s %s%s%s has logged OFF.\n", */
+/* 					ANSI_COLOR_BLUE, ANSI_ATTR_RESET, ANSI_COLOR_RED, */
+/* 					tmp, ANSI_ATTR_RESET ); */
+/* 				append_to_textbox( buf ); */
 				break;
 
 		case YMSG9_INVITE: 
@@ -415,25 +421,25 @@ void show_yahoo_packet() {
 				break;
 
 		case YMSG9_FILETRANSFER:
-				strcpy( tmp, ymsg9_field( "4" ));
+/* 				strcpy( tmp, ymsg9_field( "4" )); */
 
-				if ( ! strcmp( tmp, "FILE_TRANSFER_SYSTEM" )) {
+/* 				if ( ! strcmp( tmp, "FILE_TRANSFER_SYSTEM" )) { */
 					/* we sent a file */
-					strcpy( tmp2, ymsg9_field( "14" ));
-					sprintf( buf, "FILE: %s\n", tmp2 );
-					append_to_textbox( buf );
-				} else {
+/* 					strcpy( tmp2, ymsg9_field( "14" )); */
+/* 					sprintf( buf, "FILE: %s\n", tmp2 ); */
+/* 					append_to_textbox( buf ); */
+/* 				} else { */
 					/* we received a file */
-					strcpy( tmp2, ymsg9_field( "20" ));
-					strcpy( tmp3, ymsg9_field( "14" ));
-					exp_time = atoi( ymsg9_field( "38" ));
-					sprintf( buf, "FILE: %s has sent you a file with "
-						"the message: '%s'.\n"
-						"        %s\n"
-						"        It is available until: %s",
-						tmp, tmp3, tmp2, ctime( &exp_time ));
-					append_to_textbox( buf );
-				}
+/* 					strcpy( tmp2, ymsg9_field( "20" )); */
+/* 					strcpy( tmp3, ymsg9_field( "14" )); */
+/* 					exp_time = atoi( ymsg9_field( "38" )); */
+/* 					sprintf( buf, "FILE: %s has sent you a file with " */
+/* 						"the message: '%s'.\n" */
+/* 						"        %s\n" */
+/* 						"        It is available until: %s", */
+/* 						tmp, tmp3, tmp2, ctime( &exp_time )); */
+/* 					append_to_textbox( buf ); */
+/* 				} */
 				break;
 
 		case YMSG9_LOGOUT:
@@ -580,7 +586,7 @@ void chat_command( char *cmd ) {
 	if ( action[0] == '/' ) {
 		action++;
 		if ( ! strcasecmp( action, "think" )) {
-			sprintf( buf, "%s| . o O ( %s )\n", ymsg_sess->user, args );
+			sprintf( buf, "* %s . o O ( %s )\n", ymsg_sess->user, args );
 			ymsg9_think( ymsg_sess, args );
 		} else if ( ! strcasecmp( action, "help" )) {
 			sprintf( buf,

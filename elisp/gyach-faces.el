@@ -22,7 +22,7 @@
 
 ;;; Commentary:
 
-;; Inspired by the default face settings in ERC
+;; Inspired by the default face settings in ERC.
 
 ;;; Code:
 

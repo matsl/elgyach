@@ -30,6 +30,7 @@
 # be compiled are made visible between themselves, in the event
 # they require or load-library one another.
 
+
 if test $# = 0; then
    echo 1>&2 "No files given to $0"
    exit 1
@@ -45,8 +46,8 @@ else
    cp $* $tempdir
    cd $tempdir
 
-   echo "(setq load-path (cons nil load-path))" > script
-   $EMACS -batch -q -l script -f batch-byte-compile *.el
+   echo "(add-to-list 'load-path \"../\")" > script
+   $EMACS -batch -q --no-site-file --no-init-file -l script -f batch-byte-compile *.el
    mv *.elc ..
 
    cd ..

@@ -27,6 +27,8 @@
 (require 'gyach-faces)
 (require 'gyach-button)
 (require 'gyach-state)
+(require 'gyach-extra)
+(require 'gyach-url)
 (require 'gyach-version)
 
 (require 'comint)
@@ -74,7 +76,7 @@
 
 (defcustom gyach-program-arguments '()
   "List of other arguments to pass to the gyach sub-process."
-  :group
+  :group 'gyach
   :type 'string)
 
 (defvar gyach-mode-font-lock-keywords
@@ -116,6 +118,14 @@ the raw text as it comes in from the sub-process.  Users of this
 hook should take care to preserve the initial part of the
 text (everything before the text including the username and
 action character) and also the form of enter/leave messages."
+  :group 'gyach-hooks
+  :type 'hook)
+
+(defcustom gyach-event-hook '()
+  "List of functions taking two arguments.
+`gyach-event-hook' is a set of functions taking two arguments:
+the event type (currently 'enter or 'leave) and and event
+argument."
   :group 'gyach-hooks
   :type 'hook)
 
@@ -212,7 +222,6 @@ version of `comint-simple-send'"
 		(process-send-eof))
 	    (comint-send-string proc "\n")))))
 
-
 (defun gyach-eval-custom (proc command argument)
   "Try to evaluate command with argument."
   (let ((command-function (intern (concat "gyach-custom-" (upcase command)))))
@@ -291,13 +300,9 @@ version of `comint-simple-send'"
 	 (let ((user (downcase (match-string 1 string)))
 	       (event (match-string 2 string)))
 	   (cond ((equal event "enters")
-		  (message "Adding %s to room list" user)
-		  (add-to-list 'gyach-room-list user)
-		  (message "%d people in room" (length gyach-room-list)))
+		  (add-to-list 'gyach-room-list user))
 		 ((equal event "leaves")
-		  (message "Removing %s from room list" user);
-		  (setq gyach-room-list (remove user gyach-room-list))
-		  (message "%d people in room" (length gyach-room-list)))))
+		  (setq gyach-room-list (remove user gyach-room-list)))))
 	 (if (not gyach-suppress-enter-leave-messages)
 	     (propertize 
 	      (concat "*** " (replace-regexp-in-string "\\\\n" "" string)) 
@@ -370,7 +375,10 @@ version of `comint-simple-send'"
     (buffer-string)))
 
 
-(add-to-list 'gyach-preoutput-hook 'gyach-preoutput-url-sniff)
+(add-to-list 'gyach-preoutput-hook 
+	     'gyach-preoutput-url-sniff)
+(add-to-list 'gyach-output-hook
+	     'gyach-output-fill)
 
 (provide 'gyach)
 
