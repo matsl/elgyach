@@ -1,12 +1,13 @@
 AC_INIT(configure.in)
-AM_INIT_AUTOMAKE(elgyach, 0.2)
+AM_INIT_AUTOMAKE(elgyach, 0.3)
 AM_CONFIG_HEADER(config.h)
 
 AC_PROG_CC
 AM_PROG_CC_STDC
 AC_HEADER_STDC
 AM_PATH_LISPDIR
-AC_CHECK_LIB(pthread, pthread_create)
+
+PKG_CHECK_MODULES(YAHOO2, libyahoo2 >= 0.7.4)
 
 AC_OUTPUT([
 Makefile
