@@ -60,8 +60,6 @@ int show_colors = 0;
 int no_black = 0;
 int lf_from_input = 0;
 
-#define GYACH_URL "http://www4.infi.net/~cpinkham/gyach/"
-
 
 #define YMSG_FIELDS 300
 #define YMSG_FIELD_LENGTH 1024
@@ -181,14 +179,7 @@ void show_yahoo_packet() {
   char tmp2[2048];
   char tmp3[2048];
   char *ptr;
-  char *src;
   time_t time_now;
-  time_t exp_time;
-
-  int nwords = 0;
-  int max_words = MAX_WORDS;
-  char *words[MAX_WORDS];
-  int i;
 
   if ( ymsg_sess->pkt.size ) {
     split( ymsg_sess->pkt.data, "\xC0\x80" );
@@ -243,34 +234,10 @@ void show_yahoo_packet() {
 	}
       }
     }
-
-    /* yahoo buddy list */
-    /* 				if ( strcmp( ymsg9_field( "87" ), "" )) { */
-    /* 					sprintf( buf, */
-    /* 						"%s%sBuddies%s: %s\n", */
-    /* 						ANSI_BOLDON, ANSI_COLOR_BLUE, ANSI_ATTR_RESET, */
-    /* 						ymsg9_field( "87" )); */
-    /* 					append_to_textbox( buf ); */
-    /* 				} */
-
-    /* yahoo ignore list */
-    /* 				if ( strcmp( ymsg9_field( "88" ), "" )) { */
-    /* 					sprintf( buf, "%s%sYahoo Ignore List%s: %s\n", */
-    /* 						ANSI_BOLDON, ANSI_COLOR_CYAN, ANSI_ATTR_RESET, */
-    /* 						ymsg9_field( "88" )); */
-    /* 					append_to_textbox( buf ); */
-    /* 				} */
     break;
 
   case YMSG9_ONLINE:
     ymsg9_join( ymsg_sess );
-    break;
-
-  case YMSG9_MAIL:
-    /* 				sprintf( buf, "Gyach - You have %s%s%s email(s).  " */
-    /* 						"http://mail.yahoo.com\n", */
-    /* 					ANSI_COLOR_RED, ymsg9_field( "9" ), ANSI_ATTR_RESET ); */
-    /* 				append_to_textbox( buf ); */
     break;
 
   case YMSG9_COMMENT: 
@@ -290,6 +257,7 @@ void show_yahoo_packet() {
     append_to_textbox( buf );
 
     break;
+
   case YMSG9_JOIN:
     /* fixme, need to verify what exactly constitutes a join pkt */
     strcpy( tmp, ymsg9_field( "126" ));     /* dunno what */
@@ -330,6 +298,7 @@ void show_yahoo_packet() {
       append_to_textbox(buf);
     }
     break;
+
   case YMSG9_EXIT:
     if ( strcasecmp( ymsg_sess->user, ymsg9_field( "109"))) {
       /* someone else left */
@@ -359,50 +328,6 @@ void show_yahoo_packet() {
     strcpy( tmp, ymsg9_field( "4" ));
     break;
 
-  case YMSG9_BUDDY_ON:
-    /* 				if ( ! strcmp( ymsg9_field( "7" ), "" )) { */
-    /* 					return; */
-    /* 				} */
-
-    /* 				if ( strcmp( ymsg9_field( "8" ), "" )) { */
-    /* initial buddy list of people online */
-    /* 					sprintf( buf, "Friends Online: %s\n", ymsg9_field( "7")); */
-    /* 					append_to_textbox( buf ); */
-    /* 					return; */
-    /* 				} */
-			
-    /* 				strcpy( tmp, ymsg9_field( "7" )); */
-
-    /* 				if ( ! strcasecmp( tmp, ymsg_sess->user )) { */
-    /* 					return; */
-    /* 				} */
-
-    /* 				sprintf( buf, "%sBuddy:%s %s%s%s has logged ON.\n", */
-    /* 					ANSI_COLOR_BLUE, ANSI_ATTR_RESET, ANSI_COLOR_RED, */
-    /* 					tmp, ANSI_ATTR_RESET ); */
-    /* 				append_to_textbox( buf ); */
-    break;
-
-  case YMSG9_BUDDY_OFF:
-    /* 				if ( ! ymsg_sess->pkt.size ) { */
-    /* 					ymsg_sess->pkt.type = YMSG9_LOGOUT; */
-    /* 					show_yahoo_packet(); */
-    /* 				} */
-    /* 				if ( ! strcmp( ymsg9_field( "7" ), "" )) { */
-    /* 					return; */
-    /* 				} */
-    /* 				strcpy( tmp, ymsg9_field( "7")); */
-
-    /* 				if ( ! strcasecmp( tmp, ymsg_sess->user )) { */
-    /* 					return; */
-    /* 				} */
-
-    /* 				sprintf( buf, "%sBuddy:%s %s%s%s has logged OFF.\n", */
-    /* 					ANSI_COLOR_BLUE, ANSI_ATTR_RESET, ANSI_COLOR_RED, */
-    /* 					tmp, ANSI_ATTR_RESET ); */
-    /* 				append_to_textbox( buf ); */
-    break;
-
   case YMSG9_INVITE: 
     strcpy( tmp, ymsg9_field( "119" ));
     strcpy( tmp2, ymsg9_field( "104" ));
@@ -416,28 +341,6 @@ void show_yahoo_packet() {
 			
     sprintf( buf, "You have been invited to (%s) by %s\n", tmp2, tmp );
     append_to_textbox( buf );
-    break;
-
-  case YMSG9_FILETRANSFER:
-    /* 				strcpy( tmp, ymsg9_field( "4" )); */
-
-    /* 				if ( ! strcmp( tmp, "FILE_TRANSFER_SYSTEM" )) { */
-    /* we sent a file */
-    /* 					strcpy( tmp2, ymsg9_field( "14" )); */
-    /* 					sprintf( buf, "FILE: %s\n", tmp2 ); */
-    /* 					append_to_textbox( buf ); */
-    /* 				} else { */
-    /* we received a file */
-    /* 					strcpy( tmp2, ymsg9_field( "20" )); */
-    /* 					strcpy( tmp3, ymsg9_field( "14" )); */
-    /* 					exp_time = atoi( ymsg9_field( "38" )); */
-    /* 					sprintf( buf, "FILE: %s has sent you a file with " */
-    /* 						"the message: '%s'.\n" */
-    /* 						"        %s\n" */
-    /* 						"        It is available until: %s", */
-    /* 						tmp, tmp3, tmp2, ctime( &exp_time )); */
-    /* 					append_to_textbox( buf ); */
-    /* 				} */
     break;
 
   case YMSG9_LOGOUT:
@@ -557,9 +460,6 @@ void cmd_exec( char *cmd, int local ) {
 
 void chat_command( char *cmd ) {
   char buf[2048] = "";
-  time_t current_time;
-  int hours, minutes, seconds;
-  struct utsname un;
   char *ptr = NULL;
   char *action = NULL;
   char *args = NULL;
@@ -602,27 +502,6 @@ void chat_command( char *cmd ) {
 	       "!!cmd         - run 'cmd' and display results locally\n"
 	       "------------------------------------------------------------\n"
 	       "\n" );
-    } else if ( ! strcasecmp( action, "ver" )) {
-      uname( &un );
-      current_time = time(NULL);
-      hours = (int)(( current_time - connect_time ) / 3600);
-      minutes = (int)(( current_time - connect_time ) % 3600 ) / 60;
-      seconds = (int)(( current_time - connect_time ) % 60 );
-      sprintf( buf,
-	       "is using Gyach-Text v%s %s online for %d:%02d:%02d "
-	       "under %s %s [%s]",
-	       VERSION, GYACH_URL,
-	       hours, minutes, seconds, un.sysname, un.release, un.machine );
-      ymsg9_emote( ymsg_sess, buf );
-      sprintf( buf, "%s%s%s%s %s"
-	       "is using Gyach-Text v%s %s%s%s%s%s online for %d:%02d:%02d "
-	       "under %s %s [%s]%s\n",
-	       ANSI_COLOR_BLUE, ANSI_BOLDON, ymsg_sess->user,
-	       ANSI_ATTR_RESET, ANSI_COLOR_PURPLE,
-	       VERSION, ANSI_COLOR_BLUE, ANSI_BOLDON,
-	       GYACH_URL, ANSI_ATTR_RESET, ANSI_COLOR_PURPLE,
-	       hours, minutes, seconds, un.sysname, un.release, un.machine,
-	       ANSI_ATTR_RESET );
     } else if ( ! strcasecmp( action, "quit" )) {
       ymsg9_logout( ymsg_sess );
       close( ymsg_sess->sock );
@@ -678,63 +557,20 @@ main(int argc, char **argv) {
   char *ptr = input;
   int len = 0;
   int mode;
-  int c;
 
-  ret = config_init();
+  if (argc < 2)
+    return EXIT_FAILURE;
+      
+  memset(ymsg_sess, 0, sizeof(YMSG9_SESSION)); 
+  ymsg_sess->sock = -1; 
+  
+  ret = config_init(ymsg_sess, NULL, argv[1]);
   if (ret != 0)
     return EXIT_FAILURE;
 
   ret = text_init();
   if (ret != 0)
     return EXIT_FAILURE;
-
-  memset( ymsg_sess, 0, sizeof(YMSG9_SESSION)); 
-  ymsg_sess->sock = -1; 
-  ymsg_sess->port = YMSG9_CHAT_PORT;
-  strcpy( ymsg_sess->room, "linux, freebsd, solaris:1" );
-  strcpy( ymsg_sess->host, "scs.yahoo.com" );
-
-  while ((c = getopt(argc, argv, "u:p:r:s:fcb")) != -1) {
-    switch( c ) {
-    case 'u':	strcpy( ymsg_sess->user, optarg );
-      break;
-    case 'p':	strcpy( ymsg_sess->password, optarg );
-      break;
-    case 'r':	strcpy( ymsg_sess->room, optarg );
-      break;
-    case 's':	strcpy( ymsg_sess->host, optarg );
-      break;
-    case 'f':	fancy_gyach_text = 1;
-      break;
-    case 'c':	show_colors = 1;
-      break;
-    case 'b':	no_black = 1;
-      break;
-    }
-  }
-
-  if ( ! ymsg_sess->user[0] ) {
-    usage(argv[0], stderr);
-    return EXIT_FAILURE;
-  }
-
-  if ( ! ymsg_sess->password[0] ) {
-    printf( "Password: " );
-    if ( fgets( ymsg_sess->password, YMSG9_PASSWORD_SIZE, stdin )) {
-      if ( ymsg_sess->password[0] ) {
-	/* strip the newline */
-	ymsg_sess->password[strlen(ymsg_sess->password)-1] = '\0';
-	if ( fancy_gyach_text ) {
-	  printf( ANSI_UP
-		  "\r                                              \r" );
-	}
-      } else {
-	usage(argv[0], stderr);
-	return EXIT_FAILURE;
-      }
-    }
-  }
-
 
   mode = fcntl( fileno( stdin ), F_GETFL );
   fcntl( fileno( stdin ), F_SETFL, mode | O_NONBLOCK );
@@ -744,9 +580,9 @@ main(int argc, char **argv) {
 
   connect_time = time(NULL);
 
-  if ( ! result ) {
+  if (result == -1) {
     printf( "error opening socket: %s\n", ymsg_sess->error_msg );
-    exit( 0 );
+    return EXIT_FAILURE;
   }
 
   ymsg9_request_key( ymsg_sess );
@@ -765,7 +601,7 @@ main(int argc, char **argv) {
 
     if ( ret ) {
       if ( FD_ISSET( ymsg_sess->sock, &set )) {
-	if ( ymsg9_recv_data( ymsg_sess )) {
+	if (ymsg9_recv_data(ymsg_sess) != -1) {
 	  show_yahoo_packet();
 	}
       }

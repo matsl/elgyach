@@ -16,11 +16,12 @@
  * MA 02111-1307, USA.
  *
  * Copyright (C) 2000-2002 Chris Pinkham
+ * Copyright (C) 2003 Matthew Kennedy
  * Released under the terms of the GPL.
  * *NO WARRANTY*
  *
  * cpinkham@infi.net, cpinkham@bc2va.org
- * http://www4.infi.net/~cpinkham/gyach/
+ * mkennedy@gentoo.org
  */
 
 #ifndef YAHOOCHAT_H
@@ -28,18 +29,23 @@
 
 #include <sys/types.h>
 
+/* packet buffer sizes */
+
+#define MAX_HEADER_LENGTH 20
+#define MAX_PACKET_LENGTH (65535 + MAX_HEADER_LENGTH)
+#define MAX_DATA_LENGTH (MAX_PACKET_LENGTH - MAX_HEADER_LENGTH)
+ 
 #define YMSG9_USER_SIZE		64
 #define YMSG9_PASSWORD_SIZE	32
 #define YMSG9_ROOM_SIZE		64
 #define YMSG9_HOST_SIZE		128
 #define YMSG9_COOKIE_SIZE	1024
-#define YMSG9_DATA_SIZE		2048
 
 typedef struct YMSG9_PACKET_STRUCT 
 {
   int type;                       /* packet type */
   int size;                       /* data length */
-  char data[YMSG9_DATA_SIZE + 1]; /* packet data */
+  char data[MAX_DATA_LENGTH + 1]; /* packet data */
 } YMSG9_PACKET;
 
 typedef struct YMSG9_SESSION_STRUCT {
@@ -50,14 +56,11 @@ typedef struct YMSG9_SESSION_STRUCT {
   char password[YMSG9_PASSWORD_SIZE + 1]; /* password */
   char room[YMSG9_ROOM_SIZE + 1];         /* current room */
   char host[YMSG9_HOST_SIZE + 1];         /* hostname to connect to */
-  char proxy_host[YMSG9_HOST_SIZE + 1];   /* hostname to connect to */
-  int proxy_port;                         /* port to connect to */
   char cookie[YMSG9_COOKIE_SIZE + 1];     /* cookie(s) */
   int session_id;        /* session id */
   int io_callback_tag;   /* input callback tag */
   int ping_callback_tag; /* ping callback tag */
   char *error_msg;       /* error message if needed */
-  int debug_packets;     /* debug in/out packets */
   YMSG9_PACKET pkt;      /* data packet */
 } YMSG9_SESSION;
 

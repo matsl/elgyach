@@ -21,6 +21,8 @@
 #ifndef USAGE_H
 #define USAGE_H
 
-void usage(char *program, FILE *stream);
+#include <stdio.h>
+
+extern void usage(FILE *stream);
 
 #endif

@@ -1,4 +1,4 @@
-/* usage.c: help system
+/* error.h: error output etc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -16,13 +16,14 @@
  * MA 02111-1307, USA.
  *
  * Copyright (C) 2003 Matthew Kennedy
+ *
+ * mkennedy@gentoo.org
  */
 
-#include <stdio.h>
-#include "usage.h"
+#ifndef ERROR_H
+#define ERROR_H
 
-void
-usage(FILE *stream) 
-{
-  fputs("USAGE: elgyach PROFILE\n", stream);
-}
+void fatal(YMSG_SESSION *session);
+void warn(YMSG_SESSION *session);
+
+#endif

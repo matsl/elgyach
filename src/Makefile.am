@@ -10,4 +10,8 @@ elgyach_SOURCES = \
 	usage.c usage.h \
 	yahoo_crypt.c  \
 	yahoo_md5.c yahoo_md5.h \
-	yahoochat.c yahoochat.h
+	yahoochat.c yahoochat.h \
+	find.c find.h \
+	utils.c utils.h \
+	config_api.c config_api.h \
+	error.c error.h

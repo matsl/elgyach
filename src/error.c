@@ -1,4 +1,4 @@
-/* usage.c: help system
+/* error.c: error output etc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -16,13 +16,27 @@
  * MA 02111-1307, USA.
  *
  * Copyright (C) 2003 Matthew Kennedy
+ *
+ * mkennedy@gentoo.org
  */
 
 #include <stdio.h>
-#include "usage.h"
+#include <stdlib.h>
+#include "yahoochat.h"
+#include "error.h"
 
-void
-usage(FILE *stream) 
+void 
+fatal(YMSG_SESSION *session)
 {
-  fputs("USAGE: elgyach PROFILE\n", stream);
+  warn(session);
+}
+
+void 
+warn(YMSG_SESSION *session)
+{
+  int unknown = session->error_msg == NULL;
+
+  fprintf(stderr, "Error: %s\n", unknown ? "(unknown)" : session->error_msg);
+  if (! unknown)
+    free(session->error_msg);
 }

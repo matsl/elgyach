@@ -18,12 +18,11 @@
  * Copyright (C) 2003 Matthew Kennedy
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef GCONFIG_H
+#define GCONFIG_H
 
-extern char *config_ignore;
-extern char *config_regex;
+#include "yahoochat.h"
 
-extern int config_init();
+extern int config_init(YMSG9_SESSION *session, const char *config_file, const char *profile);
 
 #endif

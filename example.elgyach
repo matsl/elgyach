@@ -1,0 +1,11 @@
+
+[general]
+
+host = scs.yahoo.com
+port = 5050
+
+[home]
+
+username = A_User
+password = SecretStuff
+room = Linux, FreeBSD, Solaris:1
