@@ -494,10 +494,10 @@ ext_yahoo_chat_cat_xml(int id, char *xml)
 void 
 ext_yahoo_chat_join(int id, char *room, char *topic, YList *members, int fd)
 {
-  room = b64_encode_string(room);
+  gchar *b64_room = b64_encode_string(room);
   topic = b64_encode_string(topic);
-  print_message("(message :type herald :room \"%s\" :topic \"%s\")", room, topic);
-  g_free(room);
+  print_message("(message :type herald :room \"%s\" :topic \"%s\")", b64_room, topic);
+  g_free(b64_room);
   g_free(topic);
 
   while (members) 
@@ -519,7 +519,7 @@ ext_yahoo_chat_userjoin(int id, char *room, struct yahoo_chat_member *who)
   else if (who->attribs & YAHOO_CHAT_FEMALE)
     sex = "female";
   else 
-    sex = "unknown";
+    sex = "nil";
 
   gchar *b64_room = b64_encode_string(room);
   gchar *b64_id = b64_encode_string(who->id);
@@ -1258,6 +1258,14 @@ main(int argc, char * argv[])
   int log_level;
   int fd_stdin = fileno(stdin);
   YList *l = CONNECTIONS;
+  int mode;
+  
+  /* unbuffered, non-blocking stdin */
+/*   mode = fcntl(fileno(stdin), F_GETFL); */
+/*   fcntl(fileno(stdin), F_SETFL, mode | O_NONBLOCK); */
+/*   setvbuf(stdin, NULL, _IONBF, 0);  */
+  /* line-buffered stdout */
+  setvbuf(stdout, NULL, _IOLBF, 0); 
 
   ylad = y_new0(yahoo_local_account, 1);
 

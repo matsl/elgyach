@@ -140,7 +140,8 @@ version of `comint-simple-send'"
     (leave . (message :type leave
 		      :room (*var* room) 
 		      :who (*var* who)))
-    (login . (message :type login-response :sub-type (*var* sub-type) :message (*var* message)))))
+    (login . (message :type login-response :sub-type (*var* sub-type) :message (*var* message)))
+    (herald . (message :type herald :room (*var* room) :topic (*var* topic)))))
 
 (defun gyach-pattern (name)
   (cdr (assoc name *gyach-message-patterns-alist*)))
@@ -156,67 +157,29 @@ version of `comint-simple-send'"
   (let ((message (base64-decode-list (car (read-from-string string)))))
     (acond ((gyach-match (gyach-pattern 'plain) message)
 	     (gyach-render-default (get-binding '(*var* who) it) (get-binding '(*var* message) it)))
+
 	    ((gyach-match (gyach-pattern 'emote) message)
 	     (gyach-render-action (get-binding '(*var* who) it) (get-binding '(*var* message) it)))
+
 	    ((gyach-match (gyach-pattern 'leave) message)
 	     (gyach-render-leave (get-binding '(*var* who) it)))
+
 	    ((gyach-match (gyach-pattern 'enter) message)
-	     (gyach-render-enter (get-binding '(*var* id) it)))
+	     (gyach-render-enter (get-binding '(*var* id) it)
+				 (get-binding '(*var* alias) it)
+				 (get-binding '(*var* age) it)
+				 (get-binding '(*var* sex) it)
+				 (get-binding '(*var* location) it)
+				 (get-binding '(*var* webcam) it)))
+
 	    ((gyach-match (gyach-pattern 'login) message)
 	     (gyach-render-login-response (get-binding '(*var* message) it)))
-	    (t
-	     (format "Ooops! Don't handle a %s yet.\n" message)))))
 
-;; ;;   (dolist (h gyach-preoutput-hook)
-;; ;;     (setq string (funcall h string))))
-;; ;;   (cond ;; plain messages
-;; ;;         ((string-match (concat "^\\(" gyach-username-regexp "\\): \\(.*\\)") string)
-;; ;; 	 (let ((user (downcase (match-string 1 string)))
-;; ;; 	       (text (match-string 2 string)))
-;; ;; 	   ;; be very aggressive (don't rely on the room list package from yahoo)
-;; ;; 	   (gyach-room-list-add user)
-;; ;; 	   (if (gyach-is-ignorable user) "" (gyach-make-rendered-text 'default user text))))
-;; ;; 	;; action messages
-;; ;; 	((string-match (concat "^\\*\\ \\(" gyach-username-regexp "\\)\\(.*\\)") string)
-;; ;; 	 (let ((user (downcase (match-string 1 string)))
-;; ;; 	       (text (match-string 2 string)))
-;; ;; 	   ;; be very aggressive (don't rely on the room list package from yahoo)
-;; ;; 	   (gyach-room-list-add user)
-;; ;; 	   (if (gyach-is-ignorable user) "" (gyach-make-rendered-text 'action user text))))
-;; ;; 	;; leave/enter events
-;; ;; 	((string-match (concat "^\\(" gyach-username-regexp "\\) \\(enters\\|leaves\\)") string)
-;; ;; 	 (let ((user (downcase (match-string 1 string)))
-;; ;; 	       (event (match-string 2 string))
-;; ;; 	       (event-type))
-;; ;; 	   (cond ((equal event "enters")
-;; ;; 		  (setq event-type 'enter))
-;; ;; 		 ((equal event "leaves")
-;; ;; 		  (setq event-type 'leave)))
-;; ;; 	   (gyach-process-events event-type user)
-;; ;; 	   (if (not gyach-suppress-enter-leave-messages)
-;; ;; 	       (gyach-make-rendered-text event-type user nil))))
-;; ;; 	;; initialization messages
-;; ;; 	((string-match (concat "^init room \\(.*\\)") string)
-;; ;; 	 (let ((room-list (remove "" (split-string 
-;; ;; 			   (replace-regexp-in-string "\\\\n" "" (downcase (match-string 1 string)))
-;; ;; 			   ","))))
-;; ;; 	   (dolist (user room-list)
-;; ;; 	     (gyach-room-list-add user))
-;; ;; 	   (gyach-make-rendered-text 'names nil room-list)))
-;; ;; 	;; server messages
-;; ;; 	((string-match "^\\*\\*\\* \\(.*\\)" string)
-;; ;; 	 (gyach-make-rendered-text 'server nil (match-string 1 string)))
-;; ;; 	;; private messages
-;; ;; 	((string-match (concat "^\\(" gyach-username-regexp "\\) <private to " 
-;; ;; 			       gyach-yahoo-username "> \\(.*\\)") 
-;; ;; 		       string)
-;; ;; 	 (let ((user (downcase (match-string 1 string)))
-;; ;; 	       (text (match-string 2 string)))
-;; ;; 	   (if (gyach-is-ignorable user) 
-;; ;; 	       "" 
-;; ;; 	     (gyach-make-rendered-text 'private user text))))
-;; ;; 	(t 
-;; ;; 	 string)))
+	    ((gyach-match (gyach-pattern 'herald) message)
+	     (gyach-render-herald (get-binding '(*var* room) it) (get-binding '(*var* topic) it)))
+
+	    (t
+	     (format "Ooops! Don't handle a %s yet. String was %s\n" message string)))))
 
 (defun gyach-output-filter-functions (string)
   string)

@@ -161,16 +161,31 @@ Currently, this does nothing."
     (concat (propertize 
 	     (concat "*** " user " left the room") 'face 'gyach-event-face) "\n")))
 
-(defun gyach-render-enter (user)
-  (let ((user (gyach-clean-username user)))
-    (concat (propertize 
-	     (concat "*** " user " entered the room") 'face 'gyach-event-face) "\n")))
+(defun gyach-render-enter (user alias age sex location webcam)
+  (let ((user (gyach-clean-username user))
+	(desc (mapconcat '(lambda (n)
+			    (format "%s: %s" (car n) (cdr n)))
+			 (remove-if '(lambda (n)
+				       (null (cdr n)))
+				    `(("alias" . ,alias) 
+				      ("age" . ,age) 
+				      ("sex" . ,(case sex (male "male") (female "female")))
+				      ("location" . ,location) 
+				      ("webcam" . ,(and webcam "yes")))) ", ")))
+    (propertize 
+     (if (zerop (length desc))
+	 (format "*** %s entered the room\n" user)
+       (format "*** %s (%s) entered the room\n" user desc))
+     'face 'gyach-event-face)))
 
 (defun gyach-render-server (text)
   (propertize (concat "*** " text) 'face 'gyach-server-info-face))
 
 (defun gyach-render-login-response (text)
-  (gyach-render-server text))
+  (gyach-render-server (format "Login response: %s\n" text)))
+
+(defun gyach-render-herald (room topic)
+  (gyach-render-server (format "Welcome to %s %s\n" room topic)))
 
 (provide 'gyach-faces)
 
