@@ -160,58 +160,88 @@ display_pm(YMSG9_SESSION *session)
   return 1;
 }
 
-/*   case YMSG9_JOIN: */
-/*     /\* fixme, need to verify what exactly constitutes a join pkt *\/ */
-/*     strcpy( tmp, ymsg9_field( "126" ));     /\* dunno what *\/ */
-/*     strcpy( tmp2, ymsg9_field( "104" ));    /\* room name *\/ */
-/*     if (( strcmp( tmp, "" )) || */
-/* 	( ! strcmp( tmp2, "" ))) { */
-/*       /\* I joined the room *\/ */
-/*       if ( strcmp( tmp2, "" )) { */
-/* 	strcpy( ymsg_sess->room, tmp2 ); */
+/* /\* -------------------------------------------------------------------------------- *\/ */
 
-/* 	sprintf( buf, "You are now in %s%s%s\n", */
-/* 		 ANSI_COLOR_BLUE, tmp2, ANSI_ATTR_RESET ); */
-/* 	if ( strcmp( ymsg9_field( "105" ), "" )) { */
-/* 	  strcat( buf, ANSI_COLOR_CYAN ); */
-/* 	  strcat( buf, ymsg9_field( "105" )); */
-/* 	  strcat( buf, ANSI_ATTR_RESET ); */
-/* 	  strcat( buf, "\n" ); */
-/* 	} */
-/*       } */
+/* case YMSG9_JOIN: */
+/* /\* fixme, need to verify what exactly constitutes a join pkt *\/ */
+/* strcpy( tmp, ymsg9_field( "126" ));     /\* dunno what *\/ */
+/* strcpy( tmp2, ymsg9_field( "104" ));    /\* room name *\/ */
+/* if (( strcmp( tmp, "" )) || */
+/*     ( ! strcmp( tmp2, "" ))) { */
+/*   /\* I joined the room *\/ */
+/*   if ( strcmp( tmp2, "" )) { */
+/*     strcpy( ymsg_sess->room, tmp2 ); */
 
-/*       strcpy( tmp, ymsg9_field( "109" )); */
-
-/*       snprintf(buf, BUF_LEN, "init room %s\n", tmp); */
-/*       append_to_textbox(buf); */
-
-/*       /\* 					make_tokens(tmp, max_words, &nwords, words, ","); *\/ */
-/*       /\* 					for (i = 0; i < nwords; i++) *\/ */
-/*       /\* 					  { *\/ */
-/*       /\* 					    sprintf(buf, "%s enters the room\n", words[i]); *\/ */
-/*       /\* 					    append_to_textbox( buf ); *\/ */
-/*       /\* 					  } *\/ */
-
-/*     } else if (( ! strcmp( ymsg9_field( "108" ), "1" )) && */
-/* 	       ( strcasecmp( ymsg9_field( "109" ), ymsg_sess->user ))) { */
-/*       /\* someone else joined the room while I'm in there *\/ */
-/*       strcpy(tmp, ymsg9_field( "109" )); */
-/*       sprintf(buf, "%s enters the room\n", tmp); */
-/*       append_to_textbox(buf); */
+/*     sprintf( buf, "You are now in %s%s%s\n", */
+/* 	     ANSI_COLOR_BLUE, tmp2, ANSI_ATTR_RESET ); */
+/*     if ( strcmp( ymsg9_field( "105" ), "" )) { */
+/*       strcat( buf, ANSI_COLOR_CYAN ); */
+/*       strcat( buf, ymsg9_field( "105" )); */
+/*       strcat( buf, ANSI_ATTR_RESET ); */
+/*       strcat( buf, "\n" ); */
 /*     } */
-/*     break; */
+/*   } */
+
+/*   strcpy( tmp, ymsg9_field( "109" )); */
+
+/*   snprintf(buf, BUF_LEN, "init room %s\n", tmp); */
+/*   append_to_textbox(buf); */
+
+/*   /\* 					make_tokens(tmp, max_words, &nwords, words, ","); *\/ */
+/*   /\* 					for (i = 0; i < nwords; i++) *\/ */
+/*   /\* 					  { *\/ */
+/*   /\* 					    sprintf(buf, "%s enters the room\n", words[i]); *\/ */
+/*   /\* 					    append_to_textbox( buf ); *\/ */
+/*   /\* 					  } *\/ */
+
+/* } else if (( ! strcmp( ymsg9_field( "108" ), "1" )) && */
+/* 	   ( strcasecmp( ymsg9_field( "109" ), ymsg_sess->user ))) { */
+/*   /\* someone else joined the room while I'm in there *\/ */
+/*   strcpy(tmp, ymsg9_field( "109" )); */
+/*   sprintf(buf, "%s enters the room\n", tmp); */
+/*   append_to_textbox(buf); */
+/* } */
+/* break; */
+
+/* /\* -------------------------------------------------------------------------------- *\/ */
 
 static int
 display_join(YMSG9_SESSION *session)
 {
-  int count;
+  int count1, count2;
+  char *mystery = get_value_for_key("126"), *room = get_value_for_key("104");
 
-  if (strcmp(get_value_for_key("109"), "1"))
-    count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ENTER %s]", get_value_for_key("109"));
-  output_buffer[count] = '\0';
-  print_output();
+  if (! STREQ(mystery, "") || STREQ(room, ""))
+    {
+      /* we joined the room */
+      count1 = 0;
+      if (! STREQ(room, ""))
+	{
+	  strncpy(session->room, room, YMSG9_ROOM_SIZE);
+	  session->room[YMSG9_ROOM_SIZE] = '\0';
+	  count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ROOM %s]", room);
+	  output_buffer[count1] = '\0';
 
-  return 1;
+	  if (! STREQ(get_value_for_key("105"), ""))
+	    {
+	      count2 = snprintf(output_buffer + count1, MAX_OUTPUT_LENGTH - count1, "[ROOMDATA %s]", get_value_for_key("105"));
+	      output_buffer[count1 + count2] = '\0';
+	    }
+	}
+      count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ROOMINIT %s]", get_value_for_key("109"));
+      output_buffer[count1] = '\0';
+      print_output();
+      return 1;
+    }
+  else if (STREQ(get_value_for_key("108"), "1"))
+    {
+      count1 = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[ENTER %s]", get_value_for_key("109"));
+      output_buffer[count1] = '\0';
+      print_output();
+      return 1;
+    }
+
+  return 0;
 }
 
 static int
@@ -234,7 +264,7 @@ display_get_key(YMSG9_SESSION *session)
 
   ymsg9_login(session, user);
   session->cookie[0] = '\0'; /* reset cookies */
-  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[LOGIN %s %d %s", session->host, session->port, user);
+  count = snprintf(output_buffer, MAX_OUTPUT_LENGTH, "[LOGIN %s %d %s]", session->host, session->port, user);
   output_buffer[count] = '\0';
   print_output();
 
