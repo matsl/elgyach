@@ -1,0 +1,28 @@
+ElGyach TODO List
+-----------------
+
+* Add separate window support for private message conversations (like
+  in ERC).
+
+* Add "buddy" controls for private message conversations (like in
+  Curphoo).
+
+* Add scoring based on poster (like in Gnus).  Less interesting
+  posters should appear in a gray font color, normal posters appear in
+  black and more interesting posts appear in bold.
+
+* Add a logging mechanism.
+
+* Add support for avatars
+
+* Add support for emoticons
+
+* Make URLs click-able.
+
+
+Local Variables: ***
+mode: text ***
+mode: flyspell ***
+mode: outline-minor ***
+End: ***
+

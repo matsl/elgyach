@@ -1,0 +1,24 @@
+ElGyach BUG List
+----------------
+
+* The action prefix ":" shouldn't conflict with a ":)" (emoticon) at
+  the beginning of a post.
+
+* Navigation within the buffer (eg. M-v) is somehow conflicting with
+  comint send routines, making it hard to move up the buffer without
+  it scrolling back down.
+
+* Various extraneous "\n" strings need to be stripped out.
+
+* Shell output is not shown properly to the user (but is shown
+  properly to other users).
+
+* The current text properties customization is so poor, its a bug and
+  not a to-do item ;)
+
+
+Local Variables: ***
+mode: text ***
+mode: flyspell ***
+mode: outline-minor ***
+End: ***
