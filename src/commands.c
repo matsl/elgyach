@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <glib.h>
 
@@ -127,9 +128,25 @@ command_version(gchar **argv) /* <room-name> */
     return COMMAND_ERROR;
 
   gchar *room = b64_decode_string(argv[0]);
-  yahoo_chat_message(ylad->id, NULL, room, "is using " PACKAGE "-" VERSION " " PACKAGE_URL , 2, 0);
+  yahoo_chat_message(ylad->id, NULL, room, 
+    "is using " PACKAGE "-" VERSION " " PACKAGE_URL , 2, 0);
   g_free(room);
 
+  return COMMAND_OK;
+}
+
+static command_result_t
+command_chat_list(gchar **argv) /* <room-id> */
+{
+  if (strvlen(argv) != 1)
+    return COMMAND_ERROR;
+
+  long int room_id = strtol(argv[0], NULL, 10);
+  if (errno == ERANGE || errno == EINVAL || room_id < 0)
+    return COMMAND_ERROR;
+  /* room_id == 0 means get the list from the top */
+  yahoo_get_chatrooms(ylad->id, room_id);
+  
   return COMMAND_OK;
 }
 
@@ -142,6 +159,7 @@ static command_dispatch_t dispatch_table[] =
   {{"CHAT-MESSAGE", command_chat_message},
    {"CHAT-JOIN",    command_chat_join},
    {"CHAT-LOGOFF",  command_chat_logoff},
+   {"CHAT-LIST",    command_chat_list},
    {"IM-MESSAGE",   command_im_message},
    {"IM-BELL",      command_im_bell},
    {"VERSION",      command_version},

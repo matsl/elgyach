@@ -24,23 +24,12 @@
 
 ;;
 
-(require 'gyach-faces)
-(require 'gyach-button)
-(require 'gyach-state)
-(require 'gyach-extra)
-(require 'gyach-url)
-(require 'gyach-version)
-(require 'gyach-room)
-(require 'gyach-ignore)
-(require 'gyach-events)
-(require 'gyach-highlight)
-(require 'gyach-complete)
 (require 'gyach-custom)
-(require 'gyach-away)
-
+(require 'gyach-faces)
 (require 'comint)
-
-(defconst gyach-username-regexp "[a-zA-Z0-9_.@\\-]+")
+(require 'match)
+(require 'utility)
+(require 'cl)
 
 (defvar gyach-dont-send nil)
 (defvar gyach-command nil)
@@ -51,29 +40,6 @@
 ;;; Code:
 
 (define-derived-mode gyach-mode comint-mode "gyach")
-
-(defun gyach-prompt-for-details ()
-  "Prompt for the details of the connection. Save the data in the
-global variables gyach-yahoo-username, gyach-yahoo-password,
-gyach-yahoo-room and gyach-yahoo-server."
-  (let (u p r s)
-    (setq u (or gyach-yahoo-username (read-string "Username: " "")))
-    (setq p (or gyach-yahoo-password (read-passwd "Password: " nil "")))
-    (setq r (or gyach-yahoo-room (read-string "Room: " "Linux, FreeBSD, Solaris:1")))
-    (setq s (or gyach-yahoo-server (read-string "Server: " "scs.yahoo.com")))
-    (setq
-     gyach-yahoo-username u
-     gyach-yahoo-password p
-     gyach-yahoo-room r
-     gyach-yahoo-server s)))
-
-(defun gyach-make-program-arguments ()
-  "Make a list of arguments to pass to the gyach sub-process"
-  (append (list "-u" gyach-yahoo-username)
-	  (list "-p" gyach-yahoo-password)
-	  (list "r" gyach-yahoo-room)
-	  (list "s" gyach-yahoo-server)
-	  gyach-program-arguments))
 
 (defvar comint-input-sender-no-newline nil)
 
@@ -99,36 +65,34 @@ version of `comint-simple-send'"
     (when (fboundp command-function)
       (funcall command-function proc argument))))
 
+(defun* gyach-process (&optional (buffer (current-buffer)))
+  (get-buffer-process buffer))
+
 ;;;###autoload 
 (defun elgyach (&optional buffer)
   (interactive
    (list (and current-prefix-arg 
-	      (read-buffer "Gyach buffer: " "*gyach*"))))
+	      (read-buffer "Gyach buffer: " "*elgyach*"))))
   (when (null buffer)
     (setq buffer "*gyach*"))
-
   (let ((the-buffer (get-buffer-create buffer)))
     (set-buffer the-buffer)
     (when (and gyach-logo-file (file-exists-p gyach-logo-file))
       (insert-image (create-image gyach-logo-file)))
     (insert "\n"))
 
-  (gyach-custom-restore-state-maybe)
-  (gyach-prompt-for-details)
-
+; (gyach-custom-restore-state-maybe)
+; (gyach-prompt-for-details)
   (if (not (comint-check-proc buffer))
       (let ((program (or gyach-program-name "elgyach"))
 	    shell-buffer)
 	(save-excursion 
-	  (set-buffer (apply 'make-comint-in-buffer 
-			     "gyach" 
-			     buffer 
-			     gyach-program-name 
-			     nil 
- 			     (gyach-make-program-arguments)))
+	  (set-buffer (make-comint-in-buffer "elgyach" buffer gyach-program-name))
+	  
 	  (setq gyach-buffer (current-buffer))
 	  (gyach-mode)
-	  (run-hooks 'gyach-mode-hook))
+;	  (run-hooks 'gyach-mode-hook)
+)
 	(pop-to-buffer gyach-buffer))
       (pop-to-buffer buffer))
   ;; configure our comint usage now that we have a buffer
@@ -143,94 +107,152 @@ version of `comint-simple-send'"
 
   (mapcar '(lambda (hook)
 	     (remove-hook hook t t))
-	  '(comint-preoutput-filter-functions comint-output-filter-functions comint-input-filter-functions))
+	  '(comint-preoutput-filter-functions 
+	    comint-output-filter-functions 
+	    comint-input-filter-functions))
   (remove-hook 'comint-output-filter-functions 'comint-postoutput-scroll-to-bottom t))
 
 
+(defun gyach-match (pattern1 pattern2)
+  (multiple-value-bind (matchp bindings)
+      (match pattern1 pattern2)
+    (if (and matchp (null bindings))
+	t
+      bindings)))
+
+(defvar *gyach-message-patterns-alist*
+  '((emote . (message :type emote
+		      :room (*var* room) 
+		      :who (*var* who) 
+		      :message (*var* message)))
+    (plain . (message :type plain 
+		      :room (*var* room) 
+		      :who (*var* who) 
+		      :message (*var* message)))
+    (enter . (message :type join 
+		      :room (*var* room) 
+		      :id (*var* id) 
+		      :alias (*var* alias) 
+		      :age (*var* age) 
+		      :sex (*var* sex) 
+		      :location (*var* location) 
+		      :webcam (*var* webcam)))
+    (leave . (message :type leave
+		      :room (*var* room) 
+		      :who (*var* who)))
+    (login . (message :type login-response :sub-type (*var* sub-type) :message (*var* message)))))
+
+(defun gyach-pattern (name)
+  (cdr (assoc name *gyach-message-patterns-alist*)))
+
+(defun base64-decode-list (list)
+  (loop for e in list collect 
+	(if (stringp e)
+	    (base64-decode-string e)
+	  e)))
 
 (defun gyach-preoutput-filter-functions (string)
   "Clean up text before insertion"
-  (dolist (h gyach-preoutput-hook)
-    (setq string (funcall h string)))
-  (cond ;; plain messages
-        ((string-match (concat "^\\(" gyach-username-regexp "\\): \\(.*\\)") string)
-	 (let ((user (downcase (match-string 1 string)))
-	       (text (match-string 2 string)))
-	   ;; be very aggressive (don't rely on the room list package from yahoo)
-	   (gyach-room-list-add user)
-	   (if (gyach-is-ignorable user) "" (gyach-make-rendered-text 'default user text))))
-	;; action messages
-	((string-match (concat "^\\*\\ \\(" gyach-username-regexp "\\)\\(.*\\)") string)
-	 (let ((user (downcase (match-string 1 string)))
-	       (text (match-string 2 string)))
-	   ;; be very aggressive (don't rely on the room list package from yahoo)
-	   (gyach-room-list-add user)
-	   (if (gyach-is-ignorable user) "" (gyach-make-rendered-text 'action user text))))
-	;; leave/enter events
-	((string-match (concat "^\\(" gyach-username-regexp "\\) \\(enters\\|leaves\\)") string)
-	 (let ((user (downcase (match-string 1 string)))
-	       (event (match-string 2 string))
-	       (event-type))
-	   (cond ((equal event "enters")
-		  (setq event-type 'enter))
-		 ((equal event "leaves")
-		  (setq event-type 'leave)))
-	   (gyach-process-events event-type user)
-	   (if (not gyach-suppress-enter-leave-messages)
-	       (gyach-make-rendered-text event-type user nil))))
-	;; initialization messages
-	((string-match (concat "^init room \\(.*\\)") string)
-	 (let ((room-list (remove "" (split-string 
-			   (replace-regexp-in-string "\\\\n" "" (downcase (match-string 1 string)))
-			   ","))))
-	   (dolist (user room-list)
-	     (gyach-room-list-add user))
-	   (gyach-make-rendered-text 'names nil room-list)))
-	;; server messages
-	((string-match "^\\*\\*\\* \\(.*\\)" string)
-	 (gyach-make-rendered-text 'server nil (match-string 1 string)))
-	;; private messages
-	((string-match (concat "^\\(" gyach-username-regexp "\\) <private to " 
-			       gyach-yahoo-username "> \\(.*\\)") 
-		       string)
-	 (let ((user (downcase (match-string 1 string)))
-	       (text (match-string 2 string)))
-	   (if (gyach-is-ignorable user) 
-	       "" 
-	     (gyach-make-rendered-text 'private user text))))
-	(t 
-	 string)))
+  (let ((message (base64-decode-list (car (read-from-string string)))))
+    (acond ((gyach-match (gyach-pattern 'plain) message)
+	     (gyach-render-default (get-binding '(*var* who) it) (get-binding '(*var* message) it)))
+	    ((gyach-match (gyach-pattern 'emote) message)
+	     (gyach-render-action (get-binding '(*var* who) it) (get-binding '(*var* message) it)))
+	    ((gyach-match (gyach-pattern 'leave) message)
+	     (gyach-render-leave (get-binding '(*var* who) it)))
+	    ((gyach-match (gyach-pattern 'enter) message)
+	     (gyach-render-enter (get-binding '(*var* id) it)))
+	    ((gyach-match (gyach-pattern 'login) message)
+	     (gyach-render-login-response (get-binding '(*var* message) it)))
+	    (t
+	     (format "Ooops! Don't handle a %s yet.\n" message)))))
+
+;; ;;   (dolist (h gyach-preoutput-hook)
+;; ;;     (setq string (funcall h string))))
+;; ;;   (cond ;; plain messages
+;; ;;         ((string-match (concat "^\\(" gyach-username-regexp "\\): \\(.*\\)") string)
+;; ;; 	 (let ((user (downcase (match-string 1 string)))
+;; ;; 	       (text (match-string 2 string)))
+;; ;; 	   ;; be very aggressive (don't rely on the room list package from yahoo)
+;; ;; 	   (gyach-room-list-add user)
+;; ;; 	   (if (gyach-is-ignorable user) "" (gyach-make-rendered-text 'default user text))))
+;; ;; 	;; action messages
+;; ;; 	((string-match (concat "^\\*\\ \\(" gyach-username-regexp "\\)\\(.*\\)") string)
+;; ;; 	 (let ((user (downcase (match-string 1 string)))
+;; ;; 	       (text (match-string 2 string)))
+;; ;; 	   ;; be very aggressive (don't rely on the room list package from yahoo)
+;; ;; 	   (gyach-room-list-add user)
+;; ;; 	   (if (gyach-is-ignorable user) "" (gyach-make-rendered-text 'action user text))))
+;; ;; 	;; leave/enter events
+;; ;; 	((string-match (concat "^\\(" gyach-username-regexp "\\) \\(enters\\|leaves\\)") string)
+;; ;; 	 (let ((user (downcase (match-string 1 string)))
+;; ;; 	       (event (match-string 2 string))
+;; ;; 	       (event-type))
+;; ;; 	   (cond ((equal event "enters")
+;; ;; 		  (setq event-type 'enter))
+;; ;; 		 ((equal event "leaves")
+;; ;; 		  (setq event-type 'leave)))
+;; ;; 	   (gyach-process-events event-type user)
+;; ;; 	   (if (not gyach-suppress-enter-leave-messages)
+;; ;; 	       (gyach-make-rendered-text event-type user nil))))
+;; ;; 	;; initialization messages
+;; ;; 	((string-match (concat "^init room \\(.*\\)") string)
+;; ;; 	 (let ((room-list (remove "" (split-string 
+;; ;; 			   (replace-regexp-in-string "\\\\n" "" (downcase (match-string 1 string)))
+;; ;; 			   ","))))
+;; ;; 	   (dolist (user room-list)
+;; ;; 	     (gyach-room-list-add user))
+;; ;; 	   (gyach-make-rendered-text 'names nil room-list)))
+;; ;; 	;; server messages
+;; ;; 	((string-match "^\\*\\*\\* \\(.*\\)" string)
+;; ;; 	 (gyach-make-rendered-text 'server nil (match-string 1 string)))
+;; ;; 	;; private messages
+;; ;; 	((string-match (concat "^\\(" gyach-username-regexp "\\) <private to " 
+;; ;; 			       gyach-yahoo-username "> \\(.*\\)") 
+;; ;; 		       string)
+;; ;; 	 (let ((user (downcase (match-string 1 string)))
+;; ;; 	       (text (match-string 2 string)))
+;; ;; 	   (if (gyach-is-ignorable user) 
+;; ;; 	       "" 
+;; ;; 	     (gyach-make-rendered-text 'private user text))))
+;; ;; 	(t 
+;; ;; 	 string)))
 
 (defun gyach-output-filter-functions (string)
-  (dolist (h gyach-output-hook)
-    ;; FIXME: shit what was i thinking?
-    (funcall h comint-last-output-start (point))))
+  string)
 
 (defun gyach-input-filter-functions (string)
-  "Intercept gyach.el command overrides."
-  (cond ;; pass-through commands 
-	((string-match "^/\\(tell\\|think\\|quit\\|\\join\\)\\ +" string)
-	 (setq gyach-dont-send nil))
-	;; user-custom commands
-	((string-match "^/\\([a-zA-Z]+\\)\\ ?\\(.*\\)" string)
-	 (setq gyach-dont-send t
-	       gyach-command 'custom
-	       gyach-command-arg (cons (downcase (match-string 1 string)) (match-string 2 string))))
-	(t
-	  (setq gyach-dont-send nil))))
+  string)
 
-(defun gyach-custom-QUIT (proc arg)
-  (kill-process proc)
-  (gyach-save))
+;;   (dolist (h gyach-output-hook)
+;;     ;; FIXME: shit what was i thinking?
+;;     (funcall h comint-last-output-start (point))))
 
-(define-key comint-mode-map [?\M-\t] 'ispell-complete-word)
-(define-key comint-mode-map [?\t] 'gyach-complete)
+;; (defun gyach-input-filter-functions (string)
+;;   "Intercept gyach.el command overrides."
+;;   (cond ;; pass-through commands 
+;; 	((string-match "^/\\(tell\\|think\\|quit\\|\\join\\)\\ +" string)
+;; 	 (setq gyach-dont-send nil))
+;; 	;; user-custom commands
+;; 	((string-match "^/\\([a-zA-Z]+\\)\\ ?\\(.*\\)" string)
+;; 	 (setq gyach-dont-send t
+;; 	       gyach-command 'custom
+;; 	       gyach-command-arg (cons (downcase (match-string 1 string)) (match-string 2 string))))
+;; 	(t
+;; 	  (setq gyach-dont-send nil))))
 
-(add-to-list 'gyach-preoutput-hook 
-	     'gyach-preoutput-url-sniff)
+;; (defun gyach-custom-QUIT (proc arg)
+;;   (kill-process proc)
+;;   (gyach-save))
 
-(add-to-list 'gyach-output-hook
-	     'gyach-output-fill)
+;; (define-key comint-mode-map [?\M-\t] 'ispell-complete-word)
+;; (define-key comint-mode-map [?\t] 'gyach-complete)
+
+;; ;; (add-to-list 'gyach-preoutput-hook 
+;; ;;  	     'gyach-preoutput-url-sniff)
+
+;; ;; (add-to-list 'gyach-output-hook
+;; ;; 	     'gyach-output-fill)
 
 (provide 'gyach)
 

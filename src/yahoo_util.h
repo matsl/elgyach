@@ -51,22 +51,6 @@
 #define snprintf	g_snprintf
 #define vsnprintf	g_vsnprintf
 
-#ifndef TRUE
-#define TRUE 1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-
-#ifndef MIN
-#define MIN(x,y) ((x)<(y)?(x):(y))
-#endif
-
-#ifndef MAX
-#define MAX(x,y) ((x)>(y)?(x):(y))
-#endif
-
 gchar *y_str_to_utf8(const gchar * in);
 gchar *y_utf8_to_str(const gchar * in);
 

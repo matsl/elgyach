@@ -848,40 +848,55 @@ void ext_yahoo_got_cookies(int id)
 	/*yahoo_get_yab(id);*/
 }
 
-void ext_yahoo_login_response(int id, int succ, char *url)
+void 
+ext_yahoo_login_response(int id, int succ, char *url)
 {
-	char buff[1024];
+  /* url is the URL provided by the server to re-activate a locked account */
+  gchar *message = NULL, *subtype = NULL;
+  gboolean terminate = TRUE;
 
-	if(succ == YAHOO_LOGIN_OK) {
-		ylad->status = yahoo_current_status(id);
-		print_message("logged in");
-		return;
-		
-	} else if(succ == YAHOO_LOGIN_UNAME) {
+  switch (succ) 
+    {
+    case YAHOO_LOGIN_OK:
+      ylad->status = yahoo_current_status(id);
+      message = b64_encode_string("Login OK");
+      subtype = "login-ok";
+      terminate = FALSE;
+      break;
+    case YAHOO_LOGIN_UNAME:
+      message = b64_encode_string("Invalid username");
+      subtype = "invalid-username";
+      break;
+    case YAHOO_LOGIN_PASSWD:
+      message = b64_encode_string("Invalid password");
+      subtype = "invalid-password";
+      break;
+    case YAHOO_LOGIN_LOCK:
+      message = b64_encode_string("Account locked");
+      subtype = "account-locked";
+      break;
+    case YAHOO_LOGIN_DUPL:
+      message = b64_encode_string("Duplicate login");
+      subtype = "duplicate";
+      break;
+    case YAHOO_LOGIN_SOCK:
+      message = b64_encode_string("Socket closed");
+      subtype = "socket-closed";
+      break;
+    default:
+      message = b64_encode_string("Unknown failure to login");
+      subtype = "unknown";
+      break;
+    }
 
-		snprintf(buff, sizeof(buff), "Could not log into Yahoo service - username not recognised.  Please verify that your username is correctly typed.");
-	} else if(succ == YAHOO_LOGIN_PASSWD) {
-
-		snprintf(buff, sizeof(buff), "Could not log into Yahoo service - password incorrect.  Please verify that your password is correctly typed.");
-
-	} else if(succ == YAHOO_LOGIN_LOCK) {
-		
-		snprintf(buff, sizeof(buff), "Could not log into Yahoo service.  Your account has been locked.\nVisit %s to reactivate it.", url);
-
-	} else if(succ == YAHOO_LOGIN_DUPL) {
-
-		snprintf(buff, sizeof(buff), "You have been logged out of the yahoo service, possibly due to a duplicate login.");
-	} else if(succ == YAHOO_LOGIN_SOCK) {
-
-		snprintf(buff, sizeof(buff), "The server closed the socket.");
-	} else {
-		snprintf(buff, sizeof(buff), "Could not log in, unknown reason: %d.", succ);
-	}
-
-	ylad->status = YAHOO_STATUS_OFFLINE;
-	print_message(buff);
-	yahoo_logout();
-	POLL_LOOP=0;
+  print_message("(message :type login-response :sub-type %s :message \"%s\")", subtype, message);
+  g_free(message);
+  if (terminate)
+    {
+      ylad->status = YAHOO_STATUS_OFFLINE;
+      yahoo_logout();
+      POLL_LOOP = 0;
+    }
 }
 
 void ext_yahoo_error(int id, char *err, int fatal)
@@ -1189,45 +1204,45 @@ local_input_callback(int source)
 }
 
 
-#define DEFAULT_RC ".elgyachrc"
+/* #define DEFAULT_RC ".elgyachrc" */
 
-gint
-init_config(const gchar *config_file, const gchar *profile)
-{
-  config_t config;
-  gint ret;
-  gchar *file;
-  const gchar *home = g_get_home_dir();
+/* gint */
+/* init_config(const gchar *config_file, const gchar *profile) */
+/* { */
+/*   config_t config; */
+/*   gint ret; */
+/*   gchar *file; */
+/*   const gchar *home = g_get_home_dir(); */
 
-  if (! config_file && home)
-    file = g_strdup_printf("%s/%s", home, DEFAULT_RC);
-  else if (config_file)
-    file = g_strdup(config_file);
-  else 
-    return -1;
+/*   if (! config_file && home) */
+/*     file = g_strdup_printf("%s/%s", home, DEFAULT_RC); */
+/*   else if (config_file) */
+/*     file = g_strdup(config_file); */
+/*   else  */
+/*     return -1; */
 
-  memset(ylad->yahoo_id, 0, sizeof(ylad->yahoo_id));
-  memset(ylad->password, 0, sizeof(ylad->password));
+/*   memset(ylad->yahoo_id, 0, sizeof(ylad->yahoo_id)); */
+/*   memset(ylad->password, 0, sizeof(ylad->password)); */
 
-  ret = config_open(&config, file, C_READ);
-  if (ret == 0)
-    goto config_open;
-  ret = config_read(&config, profile, "username", ylad->yahoo_id, sizeof(ylad->yahoo_id) - 1);
-  if (ret == 0)
-    goto config_read;
-  ret = config_read(&config, profile, "password", ylad->password, sizeof(ylad->password) - 1);
-  if (ret == 0)
-    goto config_read;
+/*   ret = config_open(&config, file, C_READ); */
+/*   if (ret == 0) */
+/*     goto config_open; */
+/*   ret = config_read(&config, profile, "username", ylad->yahoo_id, sizeof(ylad->yahoo_id) - 1); */
+/*   if (ret == 0) */
+/*     goto config_read; */
+/*   ret = config_read(&config, profile, "password", ylad->password, sizeof(ylad->password) - 1); */
+/*   if (ret == 0) */
+/*     goto config_read; */
 
-  config_close(&config);
-  g_free(file);
-  return 0;
+/*   config_close(&config); */
+/*   g_free(file); */
+/*   return 0; */
   
- config_read:
- config_open:
-  g_free(file);
-  return -1;
-}
+/*  config_read: */
+/*  config_open: */
+/*   g_free(file); */
+/*   return -1; */
+/* } */
 
 int 
 main(int argc, char * argv[])
@@ -1238,16 +1253,18 @@ main(int argc, char * argv[])
   int fd_stdin = fileno(stdin);
   YList *l = CONNECTIONS;
 
-  if (argc != 2)
-    return EXIT_FAILURE;
-
   ylad = y_new0(yahoo_local_account, 1);
 
-  if (init_config(NULL, argv[1]) == -1)
-    {
-      fprintf(stderr, "Invalid configuration for profile \"%s\"\n", argv[1]);
-      return EXIT_FAILURE;
-    }
+/*   if (init_config(NULL, argv[1]) == -1) */
+/*     { */
+/*       fprintf(stderr, "Invalid configuration for profile \"%s\"\n", argv[1]); */
+/*       return EXIT_FAILURE; */
+/*     } */
+
+  fgets(ylad->yahoo_id, sizeof(ylad->yahoo_id), stdin);
+  fgets(ylad->password, sizeof(ylad->password), stdin);
+  chomp(ylad->yahoo_id);
+  chomp(ylad->password);
 
   local_host = strdup(get_local_addresses());
 

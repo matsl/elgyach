@@ -77,6 +77,10 @@
   "ElGyach face for highlightable default posts"
   :group 'gyach-faces)
 
+(defface gyach-timestamp-face '((t (:forground "gray")))
+  "ElGyach face for the timestamping."
+  :group 'gyach-faces)
+
 (defface gyach-highlight-action-face '((t (:inherit 'gyach-action-face :background "yellow")))
   "ElGyach face for highlightable action posts"
   :group 'gyach-faces)
@@ -91,6 +95,8 @@
 
 
 (defun gyach-clean-username (username)
+  "Clean text in USERNAME for rendering purposes.
+Currently, this does nothing."
   username)
 
 (defun gyach-replace-usernames (string username-face)
@@ -113,69 +119,58 @@
   "Replace end-of-string newline characters with nothing."
   (replace-regexp-in-string "\n$" "" string))
 
-(defun gyach-make-rendered-text (type user text)
-  "Render a post based on the type of post (either 'action or
-'default) and the username"
-  (let* ((user (gyach-clean-username user))
-	 (input (equal user gyach-yahoo-username)))
-    (when (and (not (null text)) (not (listp text)))
-      (setq text (concat (gyach-replace-trailing-newlines (gyach-unescape-newlines text)) "\n")))
-    (cond ((equal type 'default)
-	   (if (gyach-is-highlightable user text)
-	       (concat (propertize (concat "<" user ">") 'face 'gyach-highlight-username-face)
-		       (gyach-replace-usernames
-			(propertize (concat " " text) 'face 'gyach-highlight-default-face) 
-			'gyach-highlight-username-face))
-	       (concat (propertize (concat "<" user ">") 'face 'gyach-username-face)
-		       (gyach-replace-usernames
-			(propertize (concat " " text) 'face (if input 
-								'gyach-input-face 
-								'gyach-default-face))
-			(if input 
-			    'gyach-input-username-face 
-			    'gyach-username-face)))))
-	  ((equal type 'action)
-	   (if (gyach-is-highlightable user text)
-	       (concat (propertize (concat "* " user) 'face 'gyach-highlight-username-face)
-		       (gyach-replace-usernames
-			(propertize (concat " " text) 'face 'gyach-highlight-action-face)
-			'gyach-highlight-username-face))
-	       (concat (propertize (concat "* " user) 'face 'gyach-username-face)
-		       (gyach-replace-usernames
-			(propertize (concat " " text) 'face 'gyach-action-face)
-			'gyach-username-face))))
-	  ((or (equal type 'enter) (equal type 'leave))
-	   (concat (propertize 
-		    (concat "*** " user 
-			    (cond ((equal type 'leave)
-				   " left ")
-				  ((equal type 'enter)
-				   " entered "))
-			    "the room")
-		    'face 'gyach-event-face)
-		   "\n"))
-	  ((equal type 'private)
-	   (concat
-	    (propertize (concat "*" user "* ") 'face 'gyach-private-message-username-face)
-	    (propertize text 'face 'gyach-private-message-face)))
-	  ((equal type 'server)
-	   (propertize (concat "*** " text) 'face 'gyach-server-info-face))
-	  ((equal type 'names)
-	   (let ((users text))
-	     (concat
-	      (propertize 
-	       (concat "*** Users present: " 
-		       (reduce #'(lambda (x y) 
-				   (concat x " " y)) users))
-	       'face 'gyach-server-info-face)
-	      "\n\n")))
-	  (t 
-	   (error "Invalid post type: %s" type)))))
-
 (defun gyach-lookup-highlight-color (username)
   (or (cdr (assoc username gyach-highlight-table))
       gyach-default-highlight-color))
 
+
+(defun gyach-render-action (user text)
+  (let* ((user (gyach-clean-username user))
+	 (input (equal user gyach-yahoo-username)))
+    (concat 
+     (if (gyach-is-highlightable user text)
+	 (concat (propertize (concat "* " user) 'face 'gyach-highlight-username-face)
+		 (gyach-replace-usernames
+		  (propertize (concat " " text) 'face 'gyach-highlight-action-face)
+		  'gyach-highlight-username-face))
+       (concat (propertize (concat "* " user) 'face 'gyach-username-face)
+	       (gyach-replace-usernames
+		(propertize (concat " " text) 'face 'gyach-action-face)
+		'gyach-username-face))) "\n")))
+
+(defun gyach-render-default (user text)
+  (let* ((user (gyach-clean-username user))
+	 (input (equal user gyach-yahoo-username)))
+    (concat 
+     (if (gyach-is-highlightable user text)
+	 (concat (propertize (concat "<" user ">") 'face 'gyach-highlight-username-face)
+		 (gyach-replace-usernames
+		  (propertize (concat " " text) 'face 'gyach-highlight-default-face) 
+		  'gyach-highlight-username-face))
+       (concat (propertize (concat "<" user ">") 'face 'gyach-username-face)
+	       (gyach-replace-usernames
+		(propertize (concat " " text) 'face (if input 
+							'gyach-input-face 
+						      'gyach-default-face))
+		(if input 
+		    'gyach-input-username-face 
+		  'gyach-username-face)))) "\n")))
+
+(defun gyach-render-leave (user)
+  (let ((user (gyach-clean-username user)))
+    (concat (propertize 
+	     (concat "*** " user " left the room") 'face 'gyach-event-face) "\n")))
+
+(defun gyach-render-enter (user)
+  (let ((user (gyach-clean-username user)))
+    (concat (propertize 
+	     (concat "*** " user " entered the room") 'face 'gyach-event-face) "\n")))
+
+(defun gyach-render-server (text)
+  (propertize (concat "*** " text) 'face 'gyach-server-info-face))
+
+(defun gyach-render-login-response (text)
+  (gyach-render-server text))
 
 (provide 'gyach-faces)
 

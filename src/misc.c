@@ -11,7 +11,9 @@
 
 #include "misc.h"
 
-/* Return the length of a NULL-terminated vector of strings  */
+/* 
+ * Return the length of a NULL-terminated vector of strings.
+ */
 gint
 strvlen(gchar **strv)
 {
@@ -21,6 +23,21 @@ strvlen(gchar **strv)
     count++;
   
   return count;
+}
+
+/*
+ * Remove a trailing new line from string. 
+ * Return string
+ */
+gchar *
+strchomp(gchar *string)
+{
+  size_t l = strlen(string);
+  
+  if (l > 0 || string[l - 1] == '\n')
+    string[l - 1] = '\0';
+
+  return string;
 }
 
 gchar * 
