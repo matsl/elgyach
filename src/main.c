@@ -54,6 +54,7 @@
 #include "base64.h"
 #include "misc.h"
 #include "globals.h"
+#include "config_api.h"
 
 #define PING_TIMEOUT_INTERVAL 600
 #define MAX_PREF_LEN 255
@@ -77,7 +78,7 @@ static double webcamStart = 0;
 /* id of the webcam connection (needed for uploading) */
 static int webcam_id = 0;
 
-static int poll_loop=1;
+static int POLL_LOOP = 1;
 
 static void register_callbacks();
 
@@ -189,7 +190,6 @@ get_buddy_name(char * yid)
 
   return yid;
 }
-
 
 /* {{{ Timeout */
 
@@ -500,7 +500,7 @@ ext_yahoo_chat_join(int id, char *room, char *topic, YList *members, int fd)
     {
       YList *n = members->next;
       ext_yahoo_chat_userjoin(id, room, members->data);
-      FREE(members);
+      g_free(members);
       members = n;
     }
 }
@@ -515,7 +515,7 @@ ext_yahoo_chat_userjoin(int id, char *room, struct yahoo_chat_member *who)
   else if (who->attribs & YAHOO_CHAT_FEMALE)
     sex = "female";
   else 
-    sex = NULL;
+    sex = "nil";
 
   gchar *b64_room = b64_encode_string(room);
   gchar *b64_id = b64_encode_string(who->id);
@@ -535,10 +535,7 @@ ext_yahoo_chat_userjoin(int id, char *room, struct yahoo_chat_member *who)
     print_message0(":age %d ", who->age);
   else 
     print_message0(":age nil ");
-  if (sex)
-    print_message0(":sex %s ", sex);
-  else 
-    print_message0(":sex nil ");
+  print_message0(":sex %s ", sex);
   if (who->location)
     {
       gchar *location = b64_encode_string(who->location);
@@ -553,7 +550,6 @@ ext_yahoo_chat_userjoin(int id, char *room, struct yahoo_chat_member *who)
   g_free(who->id); who->id = NULL;
   g_free(who->alias); who->alias = NULL;
   g_free(who->location); who->location = NULL;
-  g_free(who);
 }
 
 void
@@ -616,9 +612,13 @@ ext_yahoo_got_im(int id, char *who, char *msg, long tm, int stat, int utf8)
 {
   gchar *umsg;
   glong umsg_len;
+  gchar *b64_who;
+  
   if (stat == 2) 
     {
+      b64_who = b64_encode_string(who);
       print_message("(message :type im-error :who \"%s\")", who);
+      g_free(b64_who);
       return;
     }
   if(! msg)
@@ -632,14 +632,18 @@ ext_yahoo_got_im(int id, char *who, char *msg, long tm, int stat, int utf8)
       char timestr[255];
       strncpy(timestr, ctime((time_t *) &tm), sizeof(timestr));
       timestr[strlen(timestr) - 1] = '\0';
+      b64_who = b64_encode_string(who);
       print_message("(message :type im-offline :time \"%s\" :who \"%s\" :message \"%s\")",
-        timestr, who, b64_umsg);
+        timestr, b64_who, b64_umsg);
+      g_free(b64_who);
     } 
   else
     {
+      b64_who = b64_encode_string(who);
       if(! strcmp(umsg, "<ding>"))
         print_message("(message :type im-bell :who \"%s\")", who);
       print_message("(message :type im :who \"%s\" :message \"%s\")", who, b64_umsg);
+      g_free(b64_who);
     }
   if (utf8)
     g_free(umsg);
@@ -678,25 +682,40 @@ ext_yahoo_status_changed(int id, char *who, int stat, char *msg, int away)
   yahoo_account *ya = NULL;
   YList * b;
 
-  for(b = buddies; b; b = b->next) {
-    if(! strcmp(((yahoo_account *)b->data)->yahoo_id, who)) {
-      ya = b->data;
-      break;
+
+  for(b = buddies; b; b = b->next) 
+    {
+      if(! strcmp(((yahoo_account *)b->data)->yahoo_id, who)) 
+	{
+	  ya = b->data;
+	  break;
+	}
     }
-  }
+
+  gchar *name;
+
+  if (ya)
+    name = b64_encode_string(ya->name);
+  who = b64_encode_string(who);
+
   if (msg)
     {
-      char *b64_msg = b64_encode_string(msg);
+      gchar *message = b64_encode_string(msg);
       print_message("(message :type status :name \"%s\" :who \"%s\" :message \"%s\")", 
-	ya ? ya->name : who, who, b64_msg);
-      FREE(b64_msg);
+	ya ? name : who, who, message);
+      g_free(message);
     }
   else if (stat == YAHOO_STATUS_IDLE)
     print_message("(message :type status-idle :name \"%s\" :who \"%s\" :time \"%d:%02d:%02d\")", 
-      ya ? ya->name : who, who, away / 3600, (away / 60) % 60, away % 60);
+      ya ? name : who, who, away / 3600, (away / 60) % 60, away % 60);
   else
     print_message("(message :type status-change :name \"%s\" :who \"%s\" :message \"%s\")", 
-      ya ? ya->name : who, who, yahoo_status_code(stat));
+      ya ? name : who, who, yahoo_status_code(stat));
+
+  g_free(who);
+
+  if (ya)
+    g_free(name);
 
   if (ya)
     {
@@ -704,7 +723,7 @@ ext_yahoo_status_changed(int id, char *who, int stat, char *msg, int away)
       ya->away = away;
       if (msg) 
 	{
-	  FREE(ya->msg);
+	  g_free(ya->msg);
 	  ya->msg = strdup(msg);
 	}
     }
@@ -712,24 +731,24 @@ ext_yahoo_status_changed(int id, char *who, int stat, char *msg, int away)
 
 void ext_yahoo_got_buddies(int id, YList * buds)
 {
-	while(buddies) {
-		FREE(buddies->data);
-		buddies = buddies->next;
-		if(buddies)
-			FREE(buddies->prev);
-	}
-	for(; buds; buds = buds->next) {
-		yahoo_account *ya = y_new0(yahoo_account, 1);
-		struct yahoo_buddy *bud = buds->data;
-		strncpy(ya->yahoo_id, bud->id, 255);
-		if(bud->real_name)
-			strncpy(ya->name, bud->real_name, 255);
-		strncpy(ya->group, bud->group, 255);
-		ya->status = YAHOO_STATUS_OFFLINE;
-		buddies = y_list_append(buddies, ya);
+/* 	while(buddies) { */
+/* 		FREE(buddies->data); */
+/* 		buddies = buddies->next; */
+/* 		if(buddies) */
+/* 			FREE(buddies->prev); */
+/* 	} */
+/* 	for(; buds; buds = buds->next) { */
+/* 		yahoo_account *ya = y_new0(yahoo_account, 1); */
+/* 		struct yahoo_buddy *bud = buds->data; */
+/* 		strncpy(ya->yahoo_id, bud->id, 255); */
+/* 		if(bud->real_name) */
+/* 			strncpy(ya->name, bud->real_name, 255); */
+/* 		strncpy(ya->group, bud->group, 255); */
+/* 		ya->status = YAHOO_STATUS_OFFLINE; */
+/* 		buddies = y_list_append(buddies, ya); */
 
-/*		print_message("%s is %s", bud->id, bud->real_name);*/
-	}
+/* /\*		print_message("%s is %s", bud->id, bud->real_name);*\/ */
+/* 	} */
 }
 
 void 
@@ -737,32 +756,30 @@ ext_yahoo_got_ignore(int id, YList * igns)
 {
 }
 
-void ext_yahoo_contact_added(int id, char *myid, char *who, char *msg)
+void 
+ext_yahoo_contact_added(int id, char *myid, char *who, char *message)
 {
-	char buff[1024];
-
-	snprintf(buff, sizeof(buff), "%s, the yahoo user %s has added you to their contact list", myid, who);
-	if(msg) {
-		strcat(buff, " with the following message:\n");
-		strcat(buff, msg);
-		strcat(buff, "\n");
-	} else {
-		strcat(buff, ".  ");
-	}
-	strcat(buff, "Do you want to allow this [Y/N]?");
-
-/*	print_message(buff);
-	scanf("%c", &choice);
-	if(choice != 'y' && choice != 'Y')
-		yahoo_reject_buddy(id, who, "Thanks, but no thanks.");
-*/
+  who = b64_encode_string(who);
+  if (message)
+    {
+      message = b64_encode_string(message);
+      print_message("(message :type buddy-add :who \"%s\" :message \"%s\")", who, message);
+      g_free(message);
+    }
+  else       
+    print_message("(message :type buddy-add :who \"%s\" :message nil)", who);
+  g_free(who);
 }
 
 void 
 ext_yahoo_typing_notify(int id, char *who, int stat)
 {
   if (stat && do_typing_notify)
-    print_message("(message :typing \"%s\")", who);
+    {
+      who = b64_encode_string(who);
+      print_message("(message :typing :who \"%s\")", who);
+      g_free(who);
+    }
 }
 
 void ext_yahoo_game_notify(int id, char *who, int stat)
@@ -802,7 +819,7 @@ void yahoo_logout()
 	ylad->status = YAHOO_STATUS_OFFLINE;
 	ylad->id = 0;
 
-	poll_loop=0;
+	POLL_LOOP=0;
 
 	print_message("logged_out");
 }
@@ -864,7 +881,7 @@ void ext_yahoo_login_response(int id, int succ, char *url)
 	ylad->status = YAHOO_STATUS_OFFLINE;
 	print_message(buff);
 	yahoo_logout();
-	poll_loop=0;
+	POLL_LOOP=0;
 }
 
 void ext_yahoo_error(int id, char *err, int fatal)
@@ -966,7 +983,8 @@ int ext_yahoo_connect(char *host, int port)
 /*************************************
  * Callback handling code starts here
  */
-YList *connections = NULL;
+YList *CONNECTIONS = NULL;
+
 struct _conn {
 	int tag;
 	int fd;
@@ -988,7 +1006,7 @@ int ext_yahoo_add_handler(int id, int fd, yahoo_input_condition cond, void *data
 
 	LOG(("Add %d for %d, tag %d", fd, id, c->tag));
 
-	connections = y_list_prepend(connections, c);
+	CONNECTIONS = y_list_prepend(CONNECTIONS, c);
 
 	return c->tag;
 }
@@ -996,7 +1014,7 @@ int ext_yahoo_add_handler(int id, int fd, yahoo_input_condition cond, void *data
 void ext_yahoo_remove_handler(int id, int tag)
 {
 	YList *l;
-	for(l = connections; l; l = y_list_next(l)) {
+	for(l = CONNECTIONS; l; l = y_list_next(l)) {
 		struct _conn *c = l->data;
 		if(c->tag == tag) {
 			/* don't actually remove it, just mark it for removal */
@@ -1171,117 +1189,148 @@ local_input_callback(int source)
 }
 
 
-int main(int argc, char * argv[])
+#define DEFAULT_RC ".elgyachrc"
+
+gint
+init_config(const gchar *config_file, const gchar *profile)
 {
-	int status;
-	int log_level;
-	int lfd=0;
+  config_t config;
+  gint ret;
+  gchar *file;
+  const gchar *home = g_get_home_dir();
 
-	fd_set inp, outp;
-	struct timeval tv;
+  if (! config_file && home)
+    file = g_strdup_printf("%s/%s", home, DEFAULT_RC);
+  else if (config_file)
+    file = g_strdup(config_file);
+  else 
+    return -1;
 
+  memset(ylad->yahoo_id, 0, sizeof(ylad->yahoo_id));
+  memset(ylad->password, 0, sizeof(ylad->password));
 
-	int fd_stdin = fileno(stdin);
-	YList *l=connections;
+  ret = config_open(&config, file, C_READ);
+  if (ret == 0)
+    goto config_open;
+  ret = config_read(&config, profile, "username", ylad->yahoo_id, sizeof(ylad->yahoo_id) - 1);
+  if (ret == 0)
+    goto config_read;
+  ret = config_read(&config, profile, "password", ylad->password, sizeof(ylad->password) - 1);
+  if (ret == 0)
+    goto config_read;
 
-	ylad = y_new0(yahoo_local_account, 1);
+  config_close(&config);
+  g_free(file);
+  return 0;
+  
+ config_read:
+ config_open:
+  g_free(file);
+  return -1;
+}
 
-	local_host = strdup(get_local_addresses());
+int 
+main(int argc, char * argv[])
+{
+  gchar buffer[INPUT_LINE_LENGTH];
+  int status;
+  int log_level;
+  int fd_stdin = fileno(stdin);
+  YList *l = CONNECTIONS;
 
-	printf("Yahoo Id: ");
-	scanf("%s", ylad->yahoo_id);
-	printf("Password: ");
+  if (argc != 2)
+    return EXIT_FAILURE;
+
+  ylad = y_new0(yahoo_local_account, 1);
+
+  if (init_config(NULL, argv[1]) == -1)
+    {
+      fprintf(stderr, "Invalid configuration for profile \"%s\"\n", argv[1]);
+      return EXIT_FAILURE;
+    }
+
+  local_host = strdup(get_local_addresses());
+
+  register_callbacks();
+
+  do_yahoo_debug = log_level = 0;
+  status = 0;
+  yahoo_set_log_level(log_level);
+  ext_yahoo_login(ylad, status);
+
+  while (POLL_LOOP) 
+    {
+      struct timeval tv = {.tv_sec = 1, .tv_usec = 0};
+      int lfd = 0;
+      fd_set inp, outp;
+
+      FD_ZERO(&inp);
+      FD_ZERO(&outp);
+      FD_SET(fd_stdin, &inp);
+
+      for(l = CONNECTIONS; l; ) 
 	{
-		tcflag_t oflags;
-		struct termios term;
-		tcgetattr(fd_stdin, &term);
-		oflags = term.c_lflag;
-		term.c_lflag = oflags & ~(ECHO | ECHOK | ICANON);
-		term.c_cc[VTIME] = 1;
-		tcsetattr(fd_stdin, TCSANOW, &term);
-		
-		scanf("%s", ylad->password);
-
-		term.c_lflag = oflags;
-		term.c_cc[VTIME] = 0;
-		tcsetattr(fd_stdin, TCSANOW, &term);
-	}
-	printf("\n");
-
-	printf("Initial Status: ");
-	scanf("%d", &status);
-
-	printf("Log Level: ");
-	scanf("%d", &log_level);
-	do_yahoo_debug=log_level;
-
-	register_callbacks();
-	yahoo_set_log_level(log_level);
-
-	ext_yahoo_login(ylad, status);
-
-	while(poll_loop) {
-		FD_ZERO(&inp);
-		FD_ZERO(&outp);
-		FD_SET(fd_stdin, &inp);
-		tv.tv_sec=1;
-		tv.tv_usec=0;
-		lfd=0;
-
-		for(l=connections; l; ) {
-			struct _conn *c = l->data;
-			if(c->remove) {
-				YList *n = y_list_next(l);
-				LOG(("Removing id:%d fd:%d", c->id, c->fd));
-				connections = y_list_remove_link(connections, l);
-				y_list_free_1(l);
-				free(c);
-				l=n;
-			} else {
-				if(c->cond & YAHOO_INPUT_READ)
-					FD_SET(c->fd, &inp);
-				if(c->cond & YAHOO_INPUT_WRITE)
-					FD_SET(c->fd, &outp);
-				if(lfd < c->fd)
-					lfd = c->fd;
-				l = y_list_next(l);
-			}
-		}
-
-		select(lfd + 1, &inp, &outp, NULL, &tv);
-		time(&curTime);
-
-		if(FD_ISSET(fd_stdin, &inp))	local_input_callback(0);
-
-		for(l = connections; l; l = y_list_next(l)) {
-			struct _conn *c = l->data;
-			if(c->remove)
-				continue;
-			if(FD_ISSET(c->fd, &inp))
-				yahoo_callback(c, YAHOO_INPUT_READ);
-			if(FD_ISSET(c->fd, &outp))
-				yahoo_callback(c, YAHOO_INPUT_WRITE);
-		}
-
-		if(expired(pingTimer))		yahoo_ping_timeout_callback();
-		if(expired(webcamTimer))	yahoo_webcam_timeout_callback(webcam_id);
-	}
-	LOG(("Exited loop"));
-
-	while(connections) {
-		YList *tmp = connections;
-		struct _conn * c = connections->data;
-		close(c->fd);
-		FREE(c);
-		connections = y_list_remove_link(connections, connections);
-		y_list_free_1(tmp);
+	  struct _conn *c = l->data;
+	  if(c->remove) 
+	    {
+	      YList *n = y_list_next(l);
+	      LOG(("Removing id:%d fd:%d", c->id, c->fd));
+	      CONNECTIONS = y_list_remove_link(CONNECTIONS, l);
+	      y_list_free_1(l);
+	      free(c);
+	      l = n;
+	    } 
+	  else 
+	    {
+	      if(c->cond & YAHOO_INPUT_READ)
+		FD_SET(c->fd, &inp);
+	      if(c->cond & YAHOO_INPUT_WRITE)
+		FD_SET(c->fd, &outp);
+	      if(lfd < c->fd)
+		lfd = c->fd;
+	      l = y_list_next(l);
+	    }
 	}
 
-	yahoo_logout();
+      select(lfd + 1, &inp, &outp, NULL, &tv);
+      time(&curTime);
 
-	FREE(ylad);
+      if (FD_ISSET(fd_stdin, &inp))
+	local_input_callback(0);
 
-	return 0;
+      for(l = CONNECTIONS; l; l = y_list_next(l)) 
+	{
+	  struct _conn *c = l->data;
+	  if(c->remove)
+	    continue;
+	  if(FD_ISSET(c->fd, &inp))
+	    yahoo_callback(c, YAHOO_INPUT_READ);
+	  if(FD_ISSET(c->fd, &outp))
+	    yahoo_callback(c, YAHOO_INPUT_WRITE);
+	}
+
+      if(expired(pingTimer))		
+	yahoo_ping_timeout_callback();
+      if(expired(webcamTimer))	
+	yahoo_webcam_timeout_callback(webcam_id);
+    }
+  LOG(("Exited loop"));
+
+  while (CONNECTIONS) 
+    {
+      YList *tmp = CONNECTIONS;
+      struct _conn *c = CONNECTIONS->data;
+      close(c->fd);
+      FREE(c);
+      CONNECTIONS = y_list_remove_link(CONNECTIONS, CONNECTIONS);
+      y_list_free_1(tmp);
+    }
+
+  yahoo_logout();
+
+  FREE(ylad);
+
+  return 0;
 }
 
 void ext_yahoo_got_file(int id, char *who, char *url, long expires, char *msg, char *fname, unsigned long fesize)
@@ -1293,16 +1342,16 @@ void ext_yahoo_got_identities(int id, YList * ids)
 }
 void ext_yahoo_chat_yahoologout(int id)
 { 
- 	LOG(("got chat logout"));
+  LOG(("got chat logout"));
 }
 void ext_yahoo_chat_yahooerror(int id)
 { 
- 	LOG(("got chat logout"));
+  LOG(("got chat logout"));
 }
 
 void ext_yahoo_got_search_result(int id, int found, int start, int total, YList *contacts)
 {
-	LOG(("got search result"));
+  LOG(("got search result"));
 }
 
 static void 
