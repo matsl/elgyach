@@ -16,6 +16,12 @@ ElGyach BUG List
 * The current text properties customization is so poor, its a bug and
   not a to-do item ;)
 
+* When ignoring a user, it doesn't ignore their private messages.
+
+* When ElGyach starts, it should load the .elgyach.el file if
+  present.  If .elgyach.el is not present, then it should be created
+  and initialized.
+
 
 Local Variables: ***
 mode: text ***
